@@ -220,7 +220,7 @@ OYUN_EVRENLERI = {
         "arsiv_top_sayisi": 6,
         "banko_adedi": 1,
         "hedge_havuz_boyutu": 7,
-        "dosyalar": ["Super_Loto_2020.csv", "Super_Loto.xlsx", "Super_Loto_sonuclar.xlsx"],
+        "dosyalar": ["Super_Loto_2020.csv", "Super_Loto.csv", "Super_Loto_sonuclar.csv", "OnNumara.csv"],
         "cekilis_gunleri": [1, 3, 6],
         "gun_isimleri": "Salı, Perşembe, Pazar",
         "grid_w": 10,
@@ -390,7 +390,10 @@ def evren_verisini_yukle(oyun_adi):
         t_cols = [f"T{i}" for i in range(1, k_arsiv + 1)]
 
         if kod == "sayisal":
-            df = pd.read_excel(dosya, header=1)
+            if dosya.endswith('.csv'):
+                df = pd.read_csv(dosya)
+            else:
+                df = pd.read_excel(dosya, header=1)
             df = df.rename(
                 columns={'Tarih': 'Tarih', 'T1': 'T1', 'T2': 'T2', 'T3': 'T3', 'T4': 'T4', 'T5': 'T5', 'T6': 'T6',
                          'Joker': 'Joker', 'Super': 'Super'})
@@ -816,39 +819,32 @@ def yeni_cekilis_ekle(oyun_adi, paket, tarih_str, hft_no, sayilar_listesi):
     dosya = paket["dosya"]
     kod = OYUN_EVRENLERI[oyun_adi]["kod"]
     try:
-        if dosya.endswith('.csv'):
-            with open(dosya, 'r', encoding='utf-8', errors='ignore') as f:
-                icerik = f.readlines()
-            sep = ';' if ';' in icerik[1] else ','
-            if kod == "onnumara":
-                yeni_satir = f"{hft_no}" + sep + sep.join(str(x) for x in sorted(sayilar_listesi)) + "\n"
-                for i, l in enumerate(icerik):
-                    if l.startswith('Hft'):
-                        icerik.insert(i + 1, yeni_satir)
-                        break
-                with open(dosya, 'w', encoding='utf-8') as f:
-                    f.writelines(icerik)
-            else:
-                yeni_satir = f"\n{tarih_str}{sep}" + sep.join(str(x) for x in sayilar_listesi)
-                with open(dosya, 'a', encoding='utf-8') as f:
-                    f.write(yeni_satir)
-        else:
-            df_mevcut = pd.read_excel(dosya)
-            yeni_veri = [tarih_str] + sayilar_listesi
-            if len(df_mevcut.columns) == len(yeni_veri) + 1:
-                yeni_veri = [tarih_str, hft_no] + sayilar_listesi
-            yeni_df = pd.DataFrame([yeni_veri[:len(df_mevcut.columns)]], columns=df_mevcut.columns)
-            df_guncel = pd.concat([df_mevcut.iloc[:1], yeni_df, df_mevcut.iloc[1:]], ignore_index=True)
-            df_guncel.to_excel(dosya, index=False)
+        # Pandas ile güvenli ve kaymasız CSV kaydetme
+        df_mevcut = pd.read_csv(dosya)
 
-        # Yeni veri girildiğinde tüm önbelleği ve sarkaç analizlerini sıfırla (Madde 5)
+        # On Numara için Tarih sütunu yoktur, başa Yıl ve Hafta gelir
+        if kod == "onnumara":
+            yeni_veri = [datetime.datetime.now().year, hft_no] + sorted(sayilar_listesi)
+        else:
+            yeni_veri = [tarih_str, hft_no] + sayilar_listesi
+
+        # Eğer mevcut CSV sütun sayısıyla girilen veri tutuyorsa güvenle ekle
+        if len(yeni_veri) == len(df_mevcut.columns):
+            yeni_df = pd.DataFrame([yeni_veri], columns=df_mevcut.columns)
+            # Yeni veriyi en üste (veya arşive uygun şekilde) ekleyip kaydet
+            df_guncel = pd.concat([yeni_df, df_mevcut], ignore_index=True)
+            df_guncel.to_csv(dosya, index=False)
+        else:
+            return False, f"⚠️ Sütun uyumsuzluğu! Veritabanı {len(df_mevcut.columns)} sütun bekliyor, siz {len(yeni_veri)} eleman gönderdiniz."
+
+        # Yeni veri girildiğinde tüm önbelleği ve sarkaç analizlerini sıfırla
         st.cache_data.clear()
         for k in list(st.session_state.keys()):
             if k.startswith("tohum_") or k.startswith("v23_uretim_"):
                 del st.session_state[k]
         return True, "✅ Çekiliş başarıyla veritabanına işlendi ve tüm Gianella/Markov hesaplamaları güncellendi!"
     except PermissionError:
-        return False, f"⚠️ '{dosya}' şu anda Excel'de açık! Lütfen Excel programını kapatıp tekrar 'Kaydet' butonuna basın."
+        return False, f"⚠️ '{dosya}' şu anda arka planda açık! Lütfen programları kapatıp tekrar deneyin."
     except Exception as e:
         return False, f"Kayıt sırasında hata: {e}"
 
@@ -1518,7 +1514,8 @@ yari_havuz_boyutu = max_sayi // 2
 tabs = st.tabs([
     "🚀 Dinamik Gianella Havuzları, Bant Seçimi & Kuantum Üretim",
     "💾 Kupon Kasası & İkramiye Kontrolü",
-    "🧪 Hızlı Backtest (Gianella & 28 Filtre vs Rastgele)"
+    "🧪 Hızlı Backtest (Gianella & 28 Filtre vs Rastgele)",
+    "📊 Yeni Çekiliş Girişi & Hızlı Analiz"  # YENİ SEKME
 ])
 
 # =========================================================================
@@ -1819,3 +1816,46 @@ with tabs[2]:
             bt_t = [{"İsabet Kategorisi": f"{b} Bilen Kolon", "🎯 Quant V23.5 (Gianella + 28 Filtre)": q_isabet.get(b, 0),
                      "🎲 Rastgele (Sen Seç)": r_isabet.get(b, 0)} for b in [0] + list(range(2, k_boyut + 1))]
             st.dataframe(pd.DataFrame(bt_t), use_container_width=True, hide_index=True)
+# =========================================================================
+# SEKME 4: YENİ ÇEKİLİŞ GİRİŞİ & ANINDA ANALİZ
+# =========================================================================
+with tabs[3]:
+    st.markdown(f"### 📊 {secilen_oyun} — Yeni Çekiliş Ekle & Analiz Et")
+    st.info(
+        "💡 Buradan girdiğiniz çekilişler doğrudan CSV veritabanınıza kaydedilir ve tüm sistem sarkaçları anında yeni veriye göre güncellenir. Hata almamak için açık olan Excel dosyalarınızı kapatın.")
+
+    col_g1, col_g2 = st.columns([2, 1])
+    with col_g1:
+        beklenen_sayi_adedi = 8 if aktif_cfg["kod"] == "sayisal" else (
+            6 if aktif_cfg["kod"] in ["super", "sanstopu"] else 22)
+        ornek_metin = "3, 14, 25, 41, 62, 78, 12, 44" if aktif_cfg["kod"] == "sayisal" else (
+            "4, 12, 19, 24, 31, 8" if aktif_cfg["kod"] == "sanstopu" else f"{beklenen_sayi_adedi} adet sayı")
+
+        c_tarih = st.text_input("📅 Çekiliş Tarihi (GG.AA.YYYY):", value=datetime.date.today().strftime("%d.%m.%Y"))
+        c_hft = st.number_input("📌 Hafta No:", min_value=1, max_value=500, value=124)
+        c_sayilar = st.text_input(f"🎱 Çıkan Sayılar (Örn: {ornek_metin}):")
+
+        if st.button("💾 Veritabanına Kalıcı Olarak Kaydet ve Analiz Et", type="primary"):
+            girilen_sayilar = [int(s) for s in re.findall(r'\d+', c_sayilar)]
+            if len(girilen_sayilar) != beklenen_sayi_adedi:
+                st.error(f"⚠️ Lütfen tam {beklenen_sayi_adedi} adet sayı girin! (Siz {len(girilen_sayilar)} girdiniz)")
+            else:
+                # Veriyi kaydetme fonksiyonunu çağır (Excel kilitlenme sorununu çözen bypass)
+                basari, mesaj = yeni_cekilis_ekle(secilen_oyun, aktif_paket, c_tarih, c_hft, girilen_sayilar)
+                if basari:
+                    st.success(mesaj)
+
+                    # Anında Hızlı Analiz Göstergesi
+                    toplam_puan = sum(girilen_sayilar[:aktif_cfg["kolon_boyutu"]])
+                    b_etk = "🔵 Alt Bant" if toplam_puan <= aktif_cfg["kolon_bant_alt"][1] else (
+                        "🔴 Üst Bant" if toplam_puan >= aktif_cfg["kolon_bant_ust"][0] else "🟢 Orta Bant")
+
+                    st.markdown("#### 🔍 Eklenen Çekilişin Hızlı Analizi")
+                    st.write(f"- **Toplam Puan (Bant):** {toplam_puan} ({b_etk})")
+                    st.write(
+                        f"- **Tek/Çift Dağılımı:** {sum(1 for n in girilen_sayilar if n % 2 != 0)} Tek / {sum(1 for n in girilen_sayilar if n % 2 == 0)} Çift")
+                    st.write(
+                        f"- **Küçük/Büyük Yarı:** {sum(1 for n in girilen_sayilar if n <= aktif_cfg['max_sayi'] // 2)} Alt Yarı / {sum(1 for n in girilen_sayilar if n > aktif_cfg['max_sayi'] // 2)} Üst Yarı")
+
+                else:
+                    st.error(mesaj)
