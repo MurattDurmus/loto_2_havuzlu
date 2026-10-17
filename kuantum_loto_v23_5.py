@@ -1,7 +1,7 @@
 # =========================================================================
-# QUANT LOTO V23.5 — PARÇA 1 / 3
-# KÜTÜPHANELER, 4 EVREN KONFİGÜRASYONU, KASA, VERİTABANI OKUYUCU,
-# DİNAMİK GIANELLA SARKAÇ MOTORU (SON 80 ÇEKİLİŞ) & 3x3 MARKOV MATRİSİ
+# QUANT LOTO V23.5 (V24 AKILLI OTO-DAĞILIM HİBRİT MOTORU) — TAM SÜRÜM
+# 6 ÇELİK KALKAN + 22 KUANTUM BÜYÜTEÇ (SOFT-SCORING), DİNAMİK GIANELLA
+# SARKAÇ MOTORU (SON 80 ÇEKİLİŞ), AKILLI OTO-DAĞILIM & 3x3 MARKOV
 # =========================================================================
 import streamlit as st
 import random
@@ -18,7 +18,7 @@ import networkx as nx
 from itertools import combinations
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Quant Loto V23.5 — Dinamik Gianella & 28 Filtre", page_icon="🎯", layout="wide")
+st.set_page_config(page_title="Quant Loto V23.5 — Akıllı Oto-Dağılım & Hibrit", page_icon="🎯", layout="wide")
 
 st.markdown('''
     <style>
@@ -42,7 +42,7 @@ st.markdown('''
         display: flex; align-items: center; background-color: #181c24; 
         padding: 8px 15px; border-radius: 8px; margin-bottom: 6px; border: 1px solid #2b3548;
     }
-    .kolon-baslik {width: 245px; font-weight: bold; color: #cbd5e1; font-size: 13px;}
+    .kolon-baslik {width: 320px; font-weight: bold; color: #cbd5e1; font-size: 13px;}
     .top-standart {
         display: inline-block; width: 32px; height: 32px; line-height: 32px; 
         border-radius: 50%; background-color: #FFA000; color: white; 
@@ -108,7 +108,7 @@ OYUN_EVRENLERI = {
         "arsiv_top_sayisi": 22,
         "banko_adedi": 2,
         "hedge_havuz_boyutu": 8,
-        "dosyalar": ["OnNumara.csv", "On_Numara_Kusursuz.csv", "OnNumara_3.csv"],
+        "dosyalar": ["OnNumara.csv", "OnNumara_Temiz.csv", "On_Numara_Kusursuz.csv", "OnNumara_3.csv"],
         "cekilis_gunleri": [0, 4],
         "gun_isimleri": "Pazartesi, Cuma",
         "grid_w": 10,
@@ -146,7 +146,7 @@ OYUN_EVRENLERI = {
         "arsiv_top_sayisi": 5,
         "banko_adedi": 1,
         "hedge_havuz_boyutu": 5,
-        "dosyalar": ["Sans_topu_sonuclar.xlsx", "Sans_Topu.xlsx", "Sans_topu_sonuclar.csv"],
+        "dosyalar": ["Sans_topu_sonuclar.csv", "Sans_Topu_Temiz.csv", "Sans_topu_sonuclar.xlsx", "Sans_Topu.xlsx"],
         "cekilis_gunleri": [2, 6],
         "gun_isimleri": "Çarşamba, Pazar",
         "grid_w": 7,
@@ -183,7 +183,7 @@ OYUN_EVRENLERI = {
         "arsiv_top_sayisi": 6,
         "banko_adedi": 1,
         "hedge_havuz_boyutu": 7,
-        "dosyalar": ["Cilgin_Sayisal_sonuclari.xlsx", "Cilgin_Sayisal_sonuclari_2.xlsx", "Cilgin_Sayisal.csv"],
+        "dosyalar": ["Cilgin_Sayisal.csv", "Cilgin_Sayisal_Temiz.csv", "Cilgin_Sayisal_sonuclari.xlsx", "Cilgin_Sayisal_sonuclari_2.xlsx"],
         "cekilis_gunleri": [0, 2, 5],
         "gun_isimleri": "Pazartesi, Çarşamba, Cumartesi",
         "grid_w": 10,
@@ -220,7 +220,7 @@ OYUN_EVRENLERI = {
         "arsiv_top_sayisi": 6,
         "banko_adedi": 1,
         "hedge_havuz_boyutu": 7,
-        "dosyalar": ["Super_Loto_2020.csv", "Super_Loto.csv", "Super_Loto_sonuclar.csv", "OnNumara.csv"],
+        "dosyalar": ["Super_Loto_2020.csv", "Super_Loto_Temiz.csv", "Super_Loto.csv", "Super_Loto_sonuclar.csv"],
         "cekilis_gunleri": [1, 3, 6],
         "gun_isimleri": "Salı, Perşembe, Pazar",
         "grid_w": 10,
@@ -259,17 +259,12 @@ np.fill_diagonal(MASTER_CHATTERJEE_J, 0)
 
 
 # -------------------------------------------------------------------------
-# MAX-DISPERSION & FERMAT COVERING (BALANCED WHEEL OPTİMİZASYONU)
+# MAX-DISPERSION & FERMAT COVERING + KUANTUM KALİTE OPTİMİZASYONU
 # -------------------------------------------------------------------------
 def optimal_dagilim_sec(aday_havuzu, hedef_sayi, onceden_secilenler=None):
-    """
-    Aday havuzu içinden hem satırlar arası kesişimi minimize eden (Max-Dispersion)
-    hem de havuzdaki tüm sayıları eşit frekansta tarayan (Fermat Covering / Balanced Wheel)
-    optimal kolon setini seçer.
-    """
     if len(aday_havuzu) <= hedef_sayi:
         return aday_havuzu
-    havuz_kopya = list(aday_havuzu)
+    havuz_kopya = sorted(list(aday_havuzu), key=lambda x: x.get("q_puan", 50.0), reverse=True)
     secilenler = []
     referans_havuz = list(onceden_secilenler) if onceden_secilenler else []
     sayi_ullanim_sayaci = Counter()
@@ -278,23 +273,24 @@ def optimal_dagilim_sec(aday_havuzu, hedef_sayi, onceden_secilenler=None):
         sayi_ullanim_sayaci.update(r["kolon"])
 
     if not referans_havuz:
-        ilk = havuz_kopya.pop(random.randint(0, len(havuz_kopya) - 1))
+        elit_dilim = min(15, len(havuz_kopya))
+        ilk = havuz_kopya.pop(random.randint(0, elit_dilim - 1))
         secilenler.append(ilk)
         referans_havuz.append(ilk)
         sayi_ullanim_sayaci.update(ilk["kolon"])
 
     while len(secilenler) < hedef_sayi and havuz_kopya:
         en_iyi_aday, en_dusuk_maliyet = None, 999999.0
-        # Performans için havuz çok büyükse örnekleme yap
-        taranacak = havuz_kopya if len(havuz_kopya) <= 450 else random.sample(havuz_kopya, 450)
+        taranacak = havuz_kopya if len(havuz_kopya) <= 600 else (havuz_kopya[:250] + random.sample(havuz_kopya[250:], 350))
         for aday in taranacak:
             k_set = set(aday["kolon"])
             max_ortak = max(len(k_set & set(sec["kolon"])) for sec in referans_havuz)
             ort_ortak = sum(len(k_set & set(sec["kolon"])) for sec in referans_havuz) / len(referans_havuz)
             frekans_yuku = sum(sayi_ullanim_sayaci[n] for n in aday["kolon"]) / len(aday["kolon"])
-            altin_bonus = -0.35 if aday.get("is_gold") else 0.0
+            altin_bonus = -0.45 if aday.get("is_gold") else 0.0
+            kalite_bonusu = (aday.get("q_puan", 50.0) / 100.0) * 4.5
 
-            maliyet = (max_ortak * 10.0) + (ort_ortak * 3.5) + (frekans_yuku * 1.8) + altin_bonus
+            maliyet = (max_ortak * 10.0) + (ort_ortak * 3.5) + (frekans_yuku * 1.8) + altin_bonus - kalite_bonusu
             if maliyet < en_dusuk_maliyet:
                 en_dusuk_maliyet, en_iyi_aday = maliyet, aday
 
@@ -332,7 +328,7 @@ def kasayi_txt_olarak_senkronize_et(kasa_listesi):
                 k = item["kolon"]
                 eks = item.get("ekstra", {})
                 etk = item.get("etiket", f"Kolon {idx:02d}")
-                s_str = f"  {etk:22s} (Top:{sum(k):3d}): " + " - ".join(f"{n:02d}" for n in k)
+                s_str = f"  {etk:28s} (Top:{sum(k):3d}): " + " - ".join(f"{n:02d}" for n in k)
                 if "joker" in eks: s_str += f" | Joker: {eks['joker']:02d} | Süper: {eks['super']:02d}"
                 if "arti" in eks: s_str += f" | +1 Topu: +{eks['arti']:02d}"
                 if item.get("is_gold"): s_str += " [💎 ALTIN BAĞ]"
@@ -392,6 +388,8 @@ def evren_verisini_yukle(oyun_adi):
         if kod == "sayisal":
             if dosya.endswith('.csv'):
                 df = pd.read_csv(dosya)
+                if 'Tarih' not in df.columns:
+                    df = pd.read_csv(dosya, header=1)
             else:
                 df = pd.read_excel(dosya, header=1)
             df = df.rename(
@@ -408,7 +406,8 @@ def evren_verisini_yukle(oyun_adi):
 
         elif kod == "super":
             with open(dosya, 'r', encoding='utf-8', errors='ignore') as f:
-                sep = '\t' if '\t' in f.readline() else ';'
+                ilk_satir = f.readline()
+                sep = '\t' if '\t' in ilk_satir else (';' if ';' in ilk_satir else ',')
             df = pd.read_csv(dosya, delimiter=sep)
             if len(df.columns) <= 1: df = pd.read_csv(dosya, delimiter=',')
             for c in t_cols: df[c] = pd.to_numeric(df[c], errors='coerce')
@@ -433,8 +432,10 @@ def evren_verisini_yukle(oyun_adi):
                         aktif_yil = int(first_val)
                         continue
                     if len(parts) >= 22:
-                        if first_val == 'Hft' or 'Tarih' in first_val: continue
-                        if len(parts) >= 23:
+                        if first_val in ['Hft', 'Yil'] or 'Tarih' in first_val: continue
+                        if len(parts) >= 24 and parts[0].isdigit() and len(parts[0]) == 4:
+                            rows.append([int(parts[0]), parts[1]] + parts[2:24])
+                        elif len(parts) >= 23:
                             rows.append([aktif_yil, parts[0]] + parts[1:23])
                         else:
                             rows.append([aktif_yil, '0'] + parts[:22])
@@ -564,16 +565,10 @@ def mutlak_kuantum_alani_hesapla():
 
 
 # -------------------------------------------------------------------------
-# DİNAMİK GIANELLA SARKAÇ MOTORU (SON 80 ÇEKİLİŞ ANALİZİ - TÜM OYUNLAR)
+# DİNAMİK GIANELLA SARKAÇ MOTORU (HASSAS HİPERBOLİK KALİBRASYON)
 # -------------------------------------------------------------------------
 @st.cache_data(ttl=60)
 def dinamik_gianella_havuz_analizi(oyun_adi, pencere=80):
-    """
-    Son 80 çekilişi analiz eder. Her oyunun kendi dekad/grup yapısına ve tek/çift
-    simetrisine tam uyumlu (Gianella Dengeli) kombinasyon uzayını tarayarak;
-    son 80 çekilişte en çok 'baskı biriktirmiş' (sarkaç potansiyeli en yüksek)
-    Havuz A'yı (max_sayi // 2) ve onun simetrik karşılığı Havuz B'yi tespit eder.
-    """
     paket = evren_verisini_yukle(oyun_adi)
     cfg = OYUN_EVRENLERI[oyun_adi]
     max_n = cfg["max_sayi"]
@@ -596,14 +591,12 @@ def dinamik_gianella_havuz_analizi(oyun_adi, pencere=80):
     current_sleep = paket["current_sleep"]
     evrensel_basinc, _ = mutlak_kuantum_alani_hesapla()
 
-    # 1. Son 80 çekilişte her sayının frekansını ve beklenen ortalamadan sapmasını hesapla
     pencere_sayaci = Counter(num for d in son_cekilisler for num in d if 1 <= num <= max_n)
     beklenen_bireysel = (gercek_pencere * k_arsiv) / max_n
     std_bireysel = np.sqrt(gercek_pencere * (k_arsiv / max_n) * (1.0 - (k_arsiv / max_n)))
     if std_bireysel <= 0:
         std_bireysel = 1.0
 
-    # Bireysel Sarkaç Baskı Skoru (Az çıkan + uzun süredir uyuyan + evrensel basıncı yüksek olan)
     baski_skoru = {}
     for n in range(1, max_n + 1):
         acik = beklenen_bireysel - pencere_sayaci.get(n, 0)
@@ -612,8 +605,6 @@ def dinamik_gianella_havuz_analizi(oyun_adi, pencere=80):
         evr_katki = evrensel_basinc.get(n, 0) * 0.35
         baski_skoru[n] = (z_acik * 2.2) + (uyku_norm * 1.15) + evr_katki
 
-    # 2. Dekad (Onluk Grup) bazında Gianella Dengeli Havuz A İnşası
-    # Her dekaddan tam yarısı kadar sayı seçilir ve toplam Tek/Çift eşitliği korunur.
     dekad_gruplari = {}
     for n in range(1, max_n + 1):
         d = onluk_grup_bul(n)
@@ -630,7 +621,6 @@ def dinamik_gianella_havuz_analizi(oyun_adi, pencere=80):
             hedef_k = grup_uzunluk // 2
             tekler = [x for x in sirali_d if x % 2 != 0]
             ciftler = [x for x in sirali_d if x % 2 == 0]
-            # Gianella Tek/Çift simetrisi için her 10'luktan 2-3 tek ve 2-3 çift al
             t_al = hedef_k // 2
             c_al = hedef_k // 2
             secilen_d = tekler[:t_al] + ciftler[:c_al]
@@ -639,14 +629,12 @@ def dinamik_gianella_havuz_analizi(oyun_adi, pencere=80):
                 secilen_d.append(kalan_d.pop(0))
             havuz_a.extend(secilen_d)
         else:
-            # Şans Topu (31-34 arası 4 sayı çift, ama olası tek sayıda grup kalırsa)
             artik_havuz.extend(sirali_d)
 
     if len(havuz_a) < yari_boyut and artik_havuz:
         eksik = yari_boyut - len(havuz_a)
         havuz_a.extend(sorted(artik_havuz, key=lambda x: baski_skoru[x], reverse=True)[:eksik])
 
-    # Genel Tek / Çift Simetri Düzeltmesi (Tam %50 Tek - %50 Çift Gianella Kuralı)
     havuz_a = sorted(havuz_a[:yari_boyut])
     havuz_b = sorted(list(set(range(1, max_n + 1)) - set(havuz_a)))
 
@@ -654,7 +642,6 @@ def dinamik_gianella_havuz_analizi(oyun_adi, pencere=80):
     mevcut_tek = sum(1 for x in havuz_a if x % 2 != 0)
 
     while mevcut_tek > hedef_tek:
-        # Havuz A'daki en düşük baskılı Tek sayıyı, Havuz B'deki en yüksek baskılı Çift sayıyla aynı dekadda takas et
         a_tekler = sorted([x for x in havuz_a if x % 2 != 0], key=lambda x: baski_skoru[x])
         b_ciftler = sorted([x for x in havuz_b if x % 2 == 0], key=lambda x: baski_skoru[x], reverse=True)
         if not a_tekler or not b_ciftler:
@@ -680,7 +667,6 @@ def dinamik_gianella_havuz_analizi(oyun_adi, pencere=80):
     havuz_b = sorted(havuz_b)
     set_a = set(havuz_a)
 
-    # 3. Son 80 Çekiliş Üzerinde Havuz A ve Havuz B Performans & Seri Testi
     a_top_toplam = 0
     b_top_toplam = 0
     b_ustun_seri = 0
@@ -691,7 +677,6 @@ def dinamik_gianella_havuz_analizi(oyun_adi, pencere=80):
         a_top_toplam += a_bu_cekilis
         b_top_toplam += b_bu_cekilis
 
-    # Son çekilişlerde Havuz B'nin üst üste baskın gelme serisi (Yazı-Tura serisi)
     for d in reversed(son_cekilisler):
         a_c = sum(1 for num in d if num in set_a)
         if (len(d) - a_c) >= a_c:
@@ -704,9 +689,9 @@ def dinamik_gianella_havuz_analizi(oyun_adi, pencere=80):
     std_toplam = np.sqrt(toplam_top * 0.5 * 0.5) if toplam_top > 0 else 1.0
     z_fark = (b_top_toplam - a_top_toplam) / (2.0 * std_toplam)
 
-    # Sarkaç Olasılık Hesabı (Açık farkı + Seri bonusu -> Sigmoid projeksiyonu)
-    seri_etkisi = min(12.0, b_ustun_seri * 1.8)
-    olasilik_a = 50.0 + min(34.0, max(4.0, z_fark * 6.8 + seri_etkisi))
+    # HASSAS HİPERBOLİK KALİBRASYON (Tavan kısıtı kaldırıldı, z-skoruna göre esnek değişir)
+    normalize_baski = max(0.0, (z_fark - 1.5) / 3.8) + (b_ustun_seri / 45.0)
+    olasilik_a = 50.0 + (38.0 * np.tanh(normalize_baski))
     olasilik_b = 100.0 - olasilik_a
 
     return {
@@ -728,10 +713,6 @@ def dinamik_gianella_havuz_analizi(oyun_adi, pencere=80):
 # 3x3 MARKOV BANT GEÇİŞ MATRİSİ & SARKAÇ RADARI
 # -------------------------------------------------------------------------
 def bant_radari_hesapla(df, cfg):
-    """
-    Arşivdeki tüm çekilişlerden 3x3 Markov Bant Geçiş Matrisini (Alt -> Orta -> Üst)
-    ve son 25 çekilişin sarkaç momentumunu birleştirerek bant olasılıklarını hesaplar.
-    """
     if df is None or len(df) < 20:
         return "Orta", "Ust", {"Alt": 33.3, "Orta": 33.4, "Ust": 33.3}, {}
     b_alt, b_ust = cfg["bant_alt"], cfg["bant_ust"]
@@ -742,8 +723,7 @@ def bant_radari_hesapla(df, cfg):
     tum_bantlar = df['Toplam'].apply(get_bant).tolist()
     bant_isimleri = ['Alt', 'Orta', 'Ust']
 
-    # 1. 3x3 Markov Geçiş Matrisi Hesabı
-    gecis_sayaci = {b1: {b2: 1 for b2 in bant_isimleri} for b1 in bant_isimleri}  # Laplace smoothing
+    gecis_sayaci = {b1: {b2: 1 for b2 in bant_isimleri} for b1 in bant_isimleri}
     for i in range(len(tum_bantlar) - 1):
         onceki, sonraki = tum_bantlar[i], tum_bantlar[i + 1]
         gecis_sayaci[onceki][sonraki] += 1
@@ -756,7 +736,6 @@ def bant_radari_hesapla(df, cfg):
     son_durum = tum_bantlar[-1]
     markov_beklentisi = markov_matrisi[son_durum]
 
-    # 2. Son 20 Çekiliş Sarkaç Dengesi
     son_20 = tum_bantlar[-20:]
     counts = Counter(son_20)
     actual = {'Alt': counts.get('Alt', 0), 'Orta': counts.get('Orta', 0), 'Ust': counts.get('Ust', 0)}
@@ -775,7 +754,6 @@ def bant_radari_hesapla(df, cfg):
     if seri_sayisi >= 3:
         sarkac_p[aktif_seri] = max(5.0, sarkac_p[aktif_seri] - (seri_sayisi * 3.5))
 
-    # %55 Sarkaç + %45 Markov Geçiş Olasılığı Hibrit Füzyonu
     hibrit_p = {k: (sarkac_p[k] * 0.55) + (markov_beklentisi[k] * 0.45) for k in bant_isimleri}
     t_raw = sum(hibrit_p.values())
     final_p = {k: (v / t_raw) * 100.0 for k, v in hibrit_p.items()}
@@ -783,12 +761,10 @@ def bant_radari_hesapla(df, cfg):
 
     return sirali_bantlar[0], sirali_bantlar[1], final_p, markov_matrisi
 
-# =========================================================================
-# QUANT LOTO V23.5 — PARÇA 2 / 3
-# EKSİK ÇEKİLİŞ KAPISI, FİZİK & TOPOLOJİ MOTORU, 28 FİLTRELİ ÇİFT KADEMELİ
-# HUNİ (DOUBLE-GATE PIPELINE), 3 SÜPER HAVUZ & GIANELLA ÜRETİM MOTORU
-# =========================================================================
 
+# -------------------------------------------------------------------------
+# EKSİK ÇEKİLİŞ KAPISI & PANDAS GÜVENLİ CSV KAYIT MOTORU
+# -------------------------------------------------------------------------
 def eksik_cekilisleri_kontrol_et(oyun_adi, paket):
     cfg = OYUN_EVRENLERI[oyun_adi]
     df = paket["df"]
@@ -819,32 +795,58 @@ def yeni_cekilis_ekle(oyun_adi, paket, tarih_str, hft_no, sayilar_listesi):
     dosya = paket["dosya"]
     kod = OYUN_EVRENLERI[oyun_adi]["kod"]
     try:
-        # Pandas ile güvenli ve kaymasız CSV kaydetme
-        df_mevcut = pd.read_csv(dosya)
-
-        # On Numara için Tarih sütunu yoktur, başa Yıl ve Hafta gelir
         if kod == "onnumara":
-            yeni_veri = [datetime.datetime.now().year, hft_no] + sorted(sayilar_listesi)
+            with open(dosya, 'r', encoding='utf-8', errors='ignore') as f:
+                icerik = f.readlines()
+            ilk_veri_satiri = icerik[1] if len(icerik) > 1 else icerik[0]
+            sep = '\t' if '\t' in ilk_veri_satiri else (';' if ';' in ilk_veri_satiri else ',')
+            sirali_22 = sorted(sayilar_listesi[:22])
+            yeni_satir = f"{hft_no}" + sep + sep.join(str(x) for x in sirali_22) + "\n"
+            eklendi = False
+            for i, l in enumerate(icerik):
+                if l.strip().startswith('Hft') or l.strip().startswith('Yil'):
+                    icerik.insert(i + 1, yeni_satir)
+                    eklendi = True
+                    break
+            if not eklendi:
+                icerik.insert(0, yeni_satir)
+            with open(dosya, 'w', encoding='utf-8') as f:
+                f.writelines(icerik)
         else:
-            yeni_veri = [tarih_str, hft_no] + sayilar_listesi
+            with open(dosya, 'r', encoding='utf-8', errors='ignore') as f:
+                ilk_satir = f.readline()
+                sep = '\t' if '\t' in ilk_satir else (';' if ';' in ilk_satir else ',')
+            df_mevcut = pd.read_csv(dosya, delimiter=sep)
+            if kod == "sanstopu":
+                ana_5 = sorted(sayilar_listesi[:5])
+                arti_1 = [sayilar_listesi[5]]
+                sirali_sayilar = ana_5 + arti_1
+            elif kod == "sayisal":
+                ana_6 = sorted(sayilar_listesi[:6])
+                joker_super = sayilar_listesi[6:8]
+                sirali_sayilar = ana_6 + joker_super
+            else:
+                sirali_sayilar = sorted(sayilar_listesi)
 
-        # Eğer mevcut CSV sütun sayısıyla girilen veri tutuyorsa güvenle ekle
-        if len(yeni_veri) == len(df_mevcut.columns):
-            yeni_df = pd.DataFrame([yeni_veri], columns=df_mevcut.columns)
-            # Yeni veriyi en üste (veya arşive uygun şekilde) ekleyip kaydet
-            df_guncel = pd.concat([yeni_df, df_mevcut], ignore_index=True)
-            df_guncel.to_csv(dosya, index=False)
-        else:
-            return False, f"⚠️ Sütun uyumsuzluğu! Veritabanı {len(df_mevcut.columns)} sütun bekliyor, siz {len(yeni_veri)} eleman gönderdiniz."
+            yeni_veri = [tarih_str, int(hft_no)] + sirali_sayilar
+            if len(yeni_veri) == len(df_mevcut.columns):
+                yeni_df = pd.DataFrame([yeni_veri], columns=df_mevcut.columns)
+                df_guncel = pd.concat([yeni_df, df_mevcut], ignore_index=True)
+                df_guncel.to_csv(dosya, index=False, sep=sep)
+            elif len([tarih_str] + sirali_sayilar) == len(df_mevcut.columns):
+                yeni_df = pd.DataFrame([[tarih_str] + sirali_sayilar], columns=df_mevcut.columns)
+                df_guncel = pd.concat([yeni_df, df_mevcut], ignore_index=True)
+                df_guncel.to_csv(dosya, index=False, sep=sep)
+            else:
+                return False, f"⚠️ Sütun uyumsuzluğu! Veritabanı {len(df_mevcut.columns)} sütun bekliyor, girilen: {len(yeni_veri)}."
 
-        # Yeni veri girildiğinde tüm önbelleği ve sarkaç analizlerini sıfırla
         st.cache_data.clear()
         for k in list(st.session_state.keys()):
             if k.startswith("tohum_") or k.startswith("v23_uretim_"):
                 del st.session_state[k]
-        return True, "✅ Çekiliş başarıyla veritabanına işlendi ve tüm Gianella/Markov hesaplamaları güncellendi!"
+        return True, "✅ Çekiliş başarıyla CSV veritabanına işlendi ve tüm Gianella/Markov sarkaçları güncellendi!"
     except PermissionError:
-        return False, f"⚠️ '{dosya}' şu anda arka planda açık! Lütfen programları kapatıp tekrar deneyin."
+        return False, f"⚠️ '{dosya}' şu anda başka bir programda açık! Lütfen kapatıp tekrar deneyin."
     except Exception as e:
         return False, f"Kayıt sırasında hata: {e}"
 
@@ -918,20 +920,17 @@ def is_percolated(kolon, pair_counts, perc_thresh):
 
 
 def calc_antipodal_pairs(kolon, max_n):
-    """3D Küre Antipodal Ayna Çifti sayısı (x + y == max_n + 1)"""
     k_set = set(kolon)
     return sum(1 for x in kolon if (max_n + 1 - x) in k_set and x < (max_n + 1 - x))
 
 
 def calc_holographic_shadow_mean(kolon, max_n):
-    """10/22 Holografik Gölge Kalkanı: Kupon dışındaki gölge sayıların ortalaması"""
     toplam_evren = max_n * (max_n + 1) / 2.0
     golge_toplam = toplam_evren - sum(kolon)
     return golge_toplam / (max_n - len(kolon))
 
 
 def calc_harmonic_grid_resonance(kolon, max_n):
-    """Harmonik Izgara Rezonansı (Delta): Küresel uzay adımlarıyla uyum"""
     k_len = len(kolon)
     ideal_adim = max_n / (k_len + 1.0)
     adimlar = [kolon[i + 1] - kolon[i] for i in range(k_len - 1)]
@@ -939,7 +938,6 @@ def calc_harmonic_grid_resonance(kolon, max_n):
 
 
 def calc_spatial_markov_jump_ok(kolon, max_n):
-    """Uzaysal Markov Sıra-İstatistiği Geçişi: Chebyshev sıçrama varyansı denetimi"""
     k_len = len(kolon)
     beklenen_sicrama = max_n / (k_len + 1.0)
     sicramalar = [kolon[0]] + [kolon[i + 1] - kolon[i] for i in range(k_len - 1)] + [max_n + 1 - kolon[-1]]
@@ -948,7 +946,6 @@ def calc_spatial_markov_jump_ok(kolon, max_n):
 
 
 def calc_mahalanobis_d2_ok(kolon, max_n):
-    """Mahalanobis Kovaryans Matrisi (D^2): Sıra istatistiklerinin teorik pozisyonel sapması"""
     k_len = len(kolon)
     d2_top = 0.0
     for idx, val in enumerate(kolon, 1):
@@ -962,27 +959,16 @@ def calc_mahalanobis_d2_ok(kolon, max_n):
 
 
 # -------------------------------------------------------------------------
-# 28 FİLTRELİ ÇİFT KADEMELİ HUNİ (DOUBLE-GATE PIPELINE - V23.5)
+# HİBRİT MİMARİ: 6 ÇELİK KALKAN + 22 KUANTUM BÜYÜTEÇ (SOFT-SCORING)
 # -------------------------------------------------------------------------
-def cift_kademeli_28_filtre_denetimi(kolon, cfg, paket, mode="mod4", hedefler=None, bant_tipi="Orta",
-                                     altin_kesi_aktif=True, esnek_tolerans=False, tek_havuz_modu=False):
-    """
-    A. Temel İstatistiksel ve Fiziksel Süzgeçler (1-8)
-    B. Modüler, Simetri ve Gecikme Süzgeçleri (9-12)
-    C. Holografik, Kuantum Alan ve Markov Süzgeçleri (13-28)
-    olmak üzere 28 kuralı denetler.
-    """
+def hibrit_kalkan_ve_kuantum_puanla(kolon, cfg, paket, mode="mod4", hedefler=None, bant_tipi="Orta",
+                                    altin_kesi_aktif=True, esnek_tolerans=False, tek_havuz_modu=False):
     k_len = len(kolon)
     max_n = cfg["max_sayi"]
     toplam = sum(kolon)
     sinir_tipi = "mod4" if mode == "makro" else ("mod5" if mode == "mod3" else mode)
     s = cfg["sinirlar"][sinir_tipi]
-    bant_aktif_mi = hedefler is not None
-    ihlal_sayisi = 0
-    izinli_ihlal = (2 if tek_havuz_modu else 1) if esnek_tolerans else (1 if tek_havuz_modu else 0)
 
-    # --- A. TEMEL İSTATİSTİKSEL VE FİZİKSEL SÜZGEÇLER ---
-    # 1 & 2. CLT Gauss Toplam Bandı & Renkli 3 Bant Kısıtı (P33 / P66)
     if hedefler:
         gec_bant = any(h_min <= toplam <= h_max for (h_min, h_max) in hedefler)
     elif altin_kesi_aktif:
@@ -991,21 +977,21 @@ def cift_kademeli_28_filtre_denetimi(kolon, cfg, paket, mode="mod4", hedefler=No
     else:
         gec_bant = True
     if not gec_bant:
-        return False  # Seçilen hedef bant kilitlidir, esnetilmez
+        return False, 0.0, 0
 
-    # 3. İsing Tek/Çift Dengesi
+    kalkan_ihlal = 0
+    izinli_kalkan_ihlal = 1 if esnek_tolerans else 0
+
     if sum(1 for n in kolon if n % 2 != 0) not in cfg["tek_aralik"]:
-        ihlal_sayisi += 1
-        if ihlal_sayisi > izinli_ihlal: return False
+        kalkan_ihlal += 1
+        if kalkan_ihlal > izinli_kalkan_ihlal: return False, 0.0, 0
 
-    # 4. İsing Alt/Üst Yarı Dengesi
     dusuk_sayisi = sum(1 for n in kolon if n <= max_n // 2)
     izinli_yari = cfg["alt_yari_sart"].get(bant_tipi, cfg["alt_yari_sart"]["Orta"])
     if dusuk_sayisi not in izinli_yari:
-        ihlal_sayisi += 1
-        if ihlal_sayisi > izinli_ihlal: return False
+        kalkan_ihlal += 1
+        if kalkan_ihlal > izinli_kalkan_ihlal: return False, 0.0, 0
 
-    # 5, 6, 7. Paul Lévy Maksimum Boşluk, Yayılım, Standart Sapma & RMT Ardışık Çift Sınırı
     bosluklar = [kolon[i + 1] - kolon[i] - 1 for i in range(k_len - 1)]
     ardisik_cift = bosluklar.count(0)
     yay_min, yay_max = cfg["yayilim_aralik"]
@@ -1014,40 +1000,35 @@ def cift_kademeli_28_filtre_denetimi(kolon, cfg, paket, mode="mod4", hedefler=No
             ardisik_cift > cfg.get("ardisik_max", 2) or
             not (yay_min <= kolon[-1] - kolon[0] <= yay_max) or
             not (std_min <= np.std(kolon) <= std_max)):
-        ihlal_sayisi += 1
-        if ihlal_sayisi > izinli_ihlal: return False
+        kalkan_ihlal += 1
+        if kalkan_ihlal > izinli_kalkan_ihlal: return False, 0.0, 0
 
-    # 8. Poisson Onluk Blok Sınırları ve Yayılımı + Mod-10 Sınırı
     dekad_sayaci = Counter(onluk_grup_bul(n) for n in kolon)
-    max_dekad_ici = 3 if k_len == 10 else 2
+    max_dekad_ici = (4 if tek_havuz_modu else 3) if k_len == 10 else (3 if tek_havuz_modu else 2)
     if (len(dekad_sayaci) not in cfg["dekad_aralik"] or
             max(dekad_sayaci.values()) > max_dekad_ici or
             max(Counter(n % 10 for n in kolon).values()) > cfg["mod10_max"]):
-        ihlal_sayisi += 1
-        if ihlal_sayisi > izinli_ihlal: return False
+        kalkan_ihlal += 1
+        if kalkan_ihlal > izinli_kalkan_ihlal: return False, 0.0, 0
 
-    # --- B. MODÜLER, SİMETRİ VE GECİKME SÜZGEÇLERİ ---
-    # 9. Asal Sayı Rezonansı
     asallar = {p for p in ASAL_TUM if p <= max_n}
     if sum(1 for n in kolon if n in asallar) not in cfg["asal_aralik"]:
-        ihlal_sayisi += 1
-        if ihlal_sayisi > izinli_ihlal: return False
+        kalkan_ihlal += 1
+        if kalkan_ihlal > izinli_kalkan_ihlal: return False, 0.0, 0
 
-    # 10. Fermat Mod-7 ve Mod-9 (Dijital Kök) Homojenliği
+    gecen_filtre = 9 - kalkan_ihlal
+    puan = 35.0 - (kalkan_ihlal * 5.0)
+
     mod7_max = 3 if k_len == 10 else 2
     mod9_max = 3 if k_len == 10 else 2
-    if (max(Counter(n % 7 for n in kolon).values()) > mod7_max or
-            max(Counter(dijital_kok(n) for n in kolon).values()) > mod9_max):
-        ihlal_sayisi += 1
-        if ihlal_sayisi > izinli_ihlal: return False
+    if (max(Counter(n % 7 for n in kolon).values()) <= mod7_max and
+            max(Counter(dijital_kok(n) for n in kolon).values()) <= mod9_max):
+        puan += 5.0; gecen_filtre += 1
 
-    # 11. 3D Küre Antipodal Ayna Çifti Sınırı
     max_ayna = 2 if k_len == 10 else 1
-    if calc_antipodal_pairs(kolon, max_n) > max_ayna:
-        ihlal_sayisi += 1
-        if ihlal_sayisi > izinli_ihlal: return False
+    if calc_antipodal_pairs(kolon, max_n) <= max_ayna:
+        puan += 4.0; gecen_filtre += 1
 
-    # 12. Poisson Gecikme (Lag) & Soğuk Sayı Tavanı + Çift Katmanlı KPZ Yüzeyi
     t_c_95 = paket.get("t_c_95", 20)
     sleeps = paket["current_sleep"]
     asiri_soguk_adedi = sum(1 for n in kolon if sleeps.get(n, 0) >= t_c_95)
@@ -1055,22 +1036,14 @@ def cift_kademeli_28_filtre_denetimi(kolon, cfg, paket, mode="mod4", hedefler=No
     zirveler = paket["zirveler"] | paket["kpz_zirveler"]
     vadiler = paket["vadiler"] | paket["kpz_vadiler"]
     max_zirve = 4 if k_len == 10 else 2
-    if (asiri_soguk_adedi > max_soguk_tavan or
-            (zirveler and sum(1 for n in kolon if n in zirveler) > max_zirve) or
-            (vadiler and sum(1 for n in kolon if n in vadiler) < 1)):
-        ihlal_sayisi += 1
-        if ihlal_sayisi > izinli_ihlal: return False
+    if (asiri_soguk_adedi <= max_soguk_tavan and
+            (not zirveler or sum(1 for n in kolon if n in zirveler) <= max_zirve) and
+            (not vadiler or sum(1 for n in kolon if n in vadiler) >= 1)):
+        puan += 8.0; gecen_filtre += 1
 
-    # 13. Mahalanobis Kovaryans Matrisi (D^2)
-    if not calc_mahalanobis_d2_ok(kolon, max_n):
-        ihlal_sayisi += 1
-        if ihlal_sayisi > izinli_ihlal: return False
+    if calc_mahalanobis_d2_ok(kolon, max_n):
+        puan += 7.0; gecen_filtre += 1
 
-    if mode == "makro":
-        return True
-
-    # --- C. HOLOGRAFİK, KUANTUM FİZİK VE MARKOV SÜZGEÇLERİ ---
-    # 14 & 15. Evrensel Phi-Kütle Oranı, Fraktal Denge & Matruşka Kabuk Dengesi (Q1-Q3)
     if k_len == 5:
         H1, H2 = kolon[0] + kolon[1], kolon[3] + kolon[4]
         yorungeler = [kolon[0] + kolon[4], kolon[1] + kolon[3], 2 * kolon[2]]
@@ -1079,81 +1052,61 @@ def cift_kademeli_28_filtre_denetimi(kolon, cfg, paket, mode="mod4", hedefler=No
         H1, H2 = sum(kolon[:yari]), sum(kolon[yari:])
         yorungeler = [kolon[i] + kolon[k_len - 1 - i] for i in range(yari)]
 
-    if H1 == 0 or toplam == 0:
-        return False
-    h2_oran = H2 / toplam
-    fraktal = H2 / H1
-    gec_7 = (s["h2_oran"][0] <= h2_oran <= s["h2_oran"][1]) and (s["fraktal"][0] <= fraktal <= s["fraktal"][1])
-    mat1, mat2 = calc_matruska(kolon)
-    gec_8 = (max(yorungeler) - min(yorungeler)) <= s["sapma"] and (s["mat1"][0] <= mat1 <= s["mat1"][1]) and (
-                s["mat2"][0] <= mat2 <= s["mat2"][1])
-    if not (gec_7 and gec_8):
-        ihlal_sayisi += 1
-        if ihlal_sayisi > izinli_ihlal: return False
+    if H1 > 0 and toplam > 0:
+        h2_oran, fraktal = H2 / toplam, H2 / H1
+        mat1, mat2 = calc_matruska(kolon)
+        if (s["h2_oran"][0] <= h2_oran <= s["h2_oran"][1]) and (s["fraktal"][0] <= fraktal <= s["fraktal"][1]):
+            puan += 4.0; gecen_filtre += 1
+        if (max(yorungeler) - min(yorungeler)) <= s["sapma"] and (s["mat1"][0] <= mat1 <= s["mat1"][1]) and (
+                s["mat2"][0] <= mat2 <= s["mat2"][1]):
+            puan += 4.0; gecen_filtre += 1
 
-    # 16, 17, 18. Holografik Gölge Kalkanı, Harmonik Izgara Rezonansı & Uzaysal Markov Sıra-İstatistiği
     golge_ort = calc_holographic_shadow_mean(kolon, max_n)
     ideal_ort = (max_n + 1.0) / 2.0
     harmonik_delta = calc_harmonic_grid_resonance(kolon, max_n)
-    if (abs(golge_ort - ideal_ort) > ideal_ort * 0.14 or
-            not (0.20 <= harmonik_delta <= 0.95) or
-            not calc_spatial_markov_jump_ok(kolon, max_n)):
-        ihlal_sayisi += 1
-        if ihlal_sayisi > izinli_ihlal: return False
+    if abs(golge_ort - ideal_ort) <= ideal_ort * 0.14:
+        puan += 3.0; gecen_filtre += 1
+    if 0.20 <= harmonik_delta <= 0.95:
+        puan += 3.0; gecen_filtre += 1
+    if calc_spatial_markov_jump_ok(kolon, max_n):
+        puan += 3.0; gecen_filtre += 1
 
-    # 19 & 20. İsing Manyetik Spin Dengesi & Smirnov Spin Akısı (Domain Wall)
     spins = paket["spins"]
-    manyetik = sum(spins[n] for n in kolon)
-    flux = get_spin_flux(kolon, spins)
-    if (manyetik not in s["spin"]) or (flux not in s["flux"]):
-        ihlal_sayisi += 1
-        if ihlal_sayisi > izinli_ihlal: return False
+    if sum(spins[n] for n in kolon) in s["spin"]:
+        puan += 3.0; gecen_filtre += 1
+    if get_spin_flux(kolon, spins) in s["flux"]:
+        puan += 3.0; gecen_filtre += 1
 
-    # 21, 22, 23. SAW Yürüyüş, Werner SLE Kıvrımlılık & Werner CLE Döngü Alanı
     grid_w = cfg["grid_w"]
     walk_len = calc_walk_len(kolon, grid_w)
     coords = [get_coord(n, grid_w) for n in kolon]
     C = euclidean(coords[0], coords[-1])
     tort = walk_len / C if C > 0 else 999
     cle_area = poly_area(coords)
-    if not (s["walk"][0] <= walk_len <= s["walk"][1]) or not (s["tort"][0] <= tort <= s["tort"][1]) or not (
-            s["cle"][0] <= cle_area <= s["cle"][1]):
-        ihlal_sayisi += 1
-        if ihlal_sayisi > izinli_ihlal: return False
+    if s["walk"][0] <= walk_len <= s["walk"][1]: puan += 2.0; gecen_filtre += 1
+    if s["tort"][0] <= tort <= s["tort"][1]: puan += 2.0; gecen_filtre += 1
+    if s["cle"][0] <= cle_area <= s["cle"][1]: puan += 2.0; gecen_filtre += 1
 
-    # 24 & 25. Smirnov Küme Yoğunluğu & Sheffield LQG Kütlesi
     dens = get_cluster_density(kolon, grid_w)
     gff_h = paket["gff_h"]
     lqg_mass = sum(np.exp(0.5 * gff_h.get(n, 0)) for n in kolon)
-    if not (s["dens"][0] <= dens <= s["dens"][1]) or not (s["lqg"][0] <= lqg_mass <= s["lqg"][1]):
-        ihlal_sayisi += 1
-        if ihlal_sayisi > izinli_ihlal: return False
+    if s["dens"][0] <= dens <= s["dens"][1]: puan += 3.0; gecen_filtre += 1
+    if s["lqg"][0] <= lqg_mass <= s["lqg"][1]: puan += 3.0; gecen_filtre += 1
 
-    # 26, 27, 28. Guionnet RMT, Evrensel Lambda_U Birlik Sabiti & Chatterjee Spin Camı Enerjisi
     max_eig, rmt_gap = get_rmt_stats(kolon)
     lambda_u = max_eig / (kolon[-1] + 0.42 * np.sqrt(k_len * max_n))
     sk_energy = get_chatterjee_energy(kolon)
-    gec_rmt = (s["lambda_u"][0] <= lambda_u <= s["lambda_u"][1]) and (
-                s["gap"][0] * 0.85 <= rmt_gap <= s["gap"][1] * 1.15)
-    gec_sk = (s["sk"][0] <= sk_energy <= s["sk"][1])
-    if not (gec_rmt and gec_sk):
-        ihlal_sayisi += 1
-        if ihlal_sayisi > izinli_ihlal: return False
+    if s["lambda_u"][0] <= lambda_u <= s["lambda_u"][1]: puan += 2.0; gecen_filtre += 1
+    if s["gap"][0] * 0.85 <= rmt_gap <= s["gap"][1] * 1.15: puan += 2.0; gecen_filtre += 1
+    if s["sk"][0] <= sk_energy <= s["sk"][1]: puan += 2.0; gecen_filtre += 1
 
-    return True
+    return True, round(puan, 1), gecen_filtre
 
 
 # -------------------------------------------------------------------------
 # 3 BAĞIMSIZ SÜPER HAVUZ & 12 ZAMAN ÇİZGİSİ TOHUM MOTORU
 # -------------------------------------------------------------------------
 def kozmik_tohum_uret(oyun_adi, paket, mutlak_alan_aktif=True, zorla_yenile=False, aktif_alt_havuz=None):
-    """
-    Seçilen Gianella havuzu (veya tam evren) içinde:
-    1. Havuz (Kinetik Momentum & Trend)
-    2. Havuz (Topolojik & Küresel Simetri)
-    3. Havuz (Ergodik Sıçrama & Kaos / 12 Paralel Evren)
-    olmak üzere 3 Süper Havuzun kesişiminden çekirdek Banko ve Mıknatıslı Hedge toplarını üretir.
-    """
     cfg = OYUN_EVRENLERI[oyun_adi]
     max_n = cfg["max_sayi"]
     k_arsiv = cfg["arsiv_top_sayisi"]
@@ -1166,7 +1119,6 @@ def kozmik_tohum_uret(oyun_adi, paket, mutlak_alan_aktif=True, zorla_yenile=Fals
     current_sleep = paket["current_sleep"]
     faz_bankolari = set(paket["faz_bankolari"])
     pair_counts = paket["pair_counts"]
-    counts = paket["counts"]
 
     t_cols = [f"T{i}" for i in range(1, k_arsiv + 1)]
     max_idx = len(df) - 1
@@ -1209,17 +1161,13 @@ def kozmik_tohum_uret(oyun_adi, paket, mutlak_alan_aktif=True, zorla_yenile=Fals
     ezik_havuz = set(range(en_ezik_dekad * 10 + 1, min(max_n + 1, en_ezik_dekad * 10 + 11)))
     evrensel_skor, _ = mutlak_kuantum_alani_hesapla()
 
-    # 3 Süper Havuzun Birleşik Skorlaması
     ham_skor = {}
     beklenen_periyot = max_n / k_arsiv
     for n in gecerli_sayilar:
-        # Süper Havuz 3: Ergodik Sıçrama & 12 Paralel Evren Soğukluğu
         evren_puani = evren_sogukluk_sayaci.get(n, 0) * 1.65
         uyku_puani = current_sleep.get(n, 0) / beklenen_periyot
         faz_bonus = 1.6 if n in faz_bankolari else 0.0
-        # Süper Havuz 1: Kinetik Momentum & Poisson Rezonansı
         poisson_rezonans = 1.25 if 0.8 <= uyku_puani <= 1.8 else 0.0
-        # Süper Havuz 2: Topolojik & Dekad Simetrisi
         ezik_bonus = 0.9 if n in ezik_havuz else 0.0
         alan_bonus = (evrensel_skor.get(n, 0) * 1.4) if mutlak_alan_aktif else 0.0
         ham_skor[n] = evren_puani + uyku_puani + faz_bonus + poisson_rezonans + ezik_bonus + alan_bonus
@@ -1227,7 +1175,6 @@ def kozmik_tohum_uret(oyun_adi, paket, mutlak_alan_aktif=True, zorla_yenile=Fals
     sirali_tum = sorted(ham_skor, key=ham_skor.get, reverse=True)
     bankolar = sorted(sirali_tum[:banko_adedi])
 
-    # İkili Perkolasyon Çapası (Seçilen Gianella havuzu içindeki en güçlü bağlar)
     max_pair_val = max(pair_counts.values()) if pair_counts else 1
     hedge_skor = {}
     aday_pencere = sirali_tum[banko_adedi:banko_adedi + min(18, len(sirali_tum) - banko_adedi)]
@@ -1258,26 +1205,20 @@ def kozmik_tohum_uret(oyun_adi, paket, mutlak_alan_aktif=True, zorla_yenile=Fals
 
 
 # -------------------------------------------------------------------------
-# GIANELLA HAVUZUNDAN OPTİMAL KOLON ÜRETİM MOTORU (ÇİFT KADEMELİ HUNİ)
+# GIANELLA HAVUZUNDAN OPTİMAL KOLON ÜRETİM MOTORU
 # -------------------------------------------------------------------------
 def gianella_havuzundan_kolon_uret(alt_havuz_sayilari, aranan_adet, secilen_bantlar, aktif_cfg, aktif_paket,
                                    mutlak_alan_aktif, esnek_aktif, havuz_etiketi, onceden_secilen=None):
-    """
-    Seçilen Gianella havuzunu (Örn: 40 sayı) alır, kendi içinde 3 Süper Havuz tohumlarını
-    çıkarır ve 28 Filtreli Çift Kademeli Huniden geçirerek istenen kolon sayısı kadar
-    optimal dağılmış (Balanced Wheel) kupon üretir.
-    """
     if aranan_adet <= 0:
         return [], [], [], {}
 
     k_boyut = aktif_cfg["kolon_boyutu"]
     bankolar, diger_karanliklar, ek_tohum = kozmik_tohum_uret(
-         next(k for k, v in OYUN_EVRENLERI.items() if v["kod"] == aktif_cfg["kod"]),
+        next(k for k, v in OYUN_EVRENLERI.items() if v["kod"] == aktif_cfg["kod"]),
         aktif_paket, mutlak_alan_aktif, zorla_yenile=True, aktif_alt_havuz=alt_havuz_sayilari
     )
     kalan_sayilar = list(set(alt_havuz_sayilari) - set(bankolar + diger_karanliklar))
 
-    # Seçilen bantların toplam aralıklarını birleştir
     bant_araliklari = []
     if "Alt" in secilen_bantlar: bant_araliklari.append(aktif_cfg["kolon_bant_alt"])
     if "Orta" in secilen_bantlar: bant_araliklari.append(aktif_cfg["kolon_bant_orta"])
@@ -1287,16 +1228,14 @@ def gianella_havuzundan_kolon_uret(alt_havuz_sayilari, aranan_adet, secilen_bant
     ana_bant_tipi = secilen_bantlar[0] if len(secilen_bantlar) == 1 else "Orta"
 
     adaylar = []
-    mevcut_kolonlar = [x["kolon"] for x in (onceden_secilen or [])]
+    gorulen_set = set(tuple(x["kolon"]) for x in (onceden_secilen or []))
     hedge_secim_adedi = [1, 2] if k_boyut == 10 else [0, 1]
     tek_havuz_mu = len(alt_havuz_sayilari) <= (aktif_cfg["max_sayi"] // 2)
 
-    # AŞAMA 1: Katı 28 Filtre (Mod 4 & Mod 5 Hibrit Tarama)
-    hedef_aday_havuzu = max(aranan_adet * 4, 80)
-    for iter_idx in range(450000):
+    hedef_aday_havuzu = max(aranan_adet * 6, 150)
+    for iter_idx in range(90000):
         if len(adaylar) >= hedef_aday_havuzu:
             break
-        # Havuzun tamamının taranabilmesi için kolonların yarısında banko zorunlu, yarısında serbest çekirdek
         if iter_idx % 2 == 0 and len(bankolar) > 0:
             aktif_b = random.sample(bankolar, min(1, len(bankolar)))
         else:
@@ -1308,40 +1247,55 @@ def gianella_havuzundan_kolon_uret(alt_havuz_sayilari, aranan_adet, secilen_bant
         if eksik < 0 or len(kalan_sayilar) < eksik:
             continue
         aday = sorted(cekirdek + random.sample(kalan_sayilar, eksik))
+        aday_tuple = tuple(aday)
 
-        if aday not in mevcut_kolonlar and aday not in [x["kolon"] for x in adaylar]:
-            aktif_mod = "mod4" if len(adaylar) < (hedef_aday_havuzu // 2) else "mod5"
-            if cift_kademeli_28_filtre_denetimi(aday, aktif_cfg, aktif_paket, mode=aktif_mod,
-                                                hedefler=bant_araliklari, bant_tipi=ana_bant_tipi,
-                                                esnek_tolerans=esnek_aktif, tek_havuz_modu=tek_havuz_mu):
+        if aday_tuple not in gorulen_set:
+            aktif_mod = "mod4" if iter_idx < 45000 else "mod5"
+            gecti_mi, q_puan, gecen_f = hibrit_kalkan_ve_kuantum_puanla(
+                aday, aktif_cfg, aktif_paket, mode=aktif_mod,
+                hedefler=bant_araliklari, bant_tipi=ana_bant_tipi,
+                esnek_tolerans=esnek_aktif, tek_havuz_modu=tek_havuz_mu
+            )
+            if gecti_mi:
+                gorulen_set.add(aday_tuple)
                 is_gold = is_percolated(aday, aktif_paket["pair_counts"], aktif_paket["perc_thresh"])
+                if is_gold:
+                    q_puan = min(100.0, q_puan + 5.0)
                 toplam_puan = sum(aday)
                 b_etk = "Alt" if toplam_puan <= aktif_cfg["kolon_bant_alt"][1] else (
                     "Üst" if toplam_puan >= aktif_cfg["kolon_bant_ust"][0] else "Orta")
                 adaylar.append({
                     "kolon": aday,
-                    "etiket": f"{havuz_etiketi} [{b_etk}]",
-                    "is_gold": is_gold
+                    "etiket": f"{havuz_etiketi} [{b_etk} | {gecen_f}/28 Q:{int(q_puan)}]",
+                    "is_gold": is_gold,
+                    "q_puan": q_puan,
+                    "gecen_filtre": gecen_f
                 })
 
-    # AŞAMA 2: Çok dar bant veya yüksek kolon sayısında aday yetmezse esnek 27/28 toleransla tamamla
     if len(adaylar) < aranan_adet * 2:
-        for _ in range(250000):
+        for _ in range(45000):
             if len(adaylar) >= aranan_adet * 2:
                 break
             aday = sorted(random.sample(alt_havuz_sayilari, k_boyut))
-            if aday not in mevcut_kolonlar and aday not in [x["kolon"] for x in adaylar]:
-                if cift_kademeli_28_filtre_denetimi(aday, aktif_cfg, aktif_paket, mode="mod5",
-                                                    hedefler=bant_araliklari, bant_tipi=ana_bant_tipi,
-                                                    esnek_tolerans=True, tek_havuz_modu=True):
+            aday_tuple = tuple(aday)
+            if aday_tuple not in gorulen_set:
+                gecti_mi, q_puan, gecen_f = hibrit_kalkan_ve_kuantum_puanla(
+                    aday, aktif_cfg, aktif_paket, mode="mod5",
+                    hedefler=bant_araliklari, bant_tipi=ana_bant_tipi,
+                    esnek_tolerans=True, tek_havuz_modu=True
+                )
+                if gecti_mi:
+                    gorulen_set.add(aday_tuple)
                     is_gold = is_percolated(aday, aktif_paket["pair_counts"], aktif_paket["perc_thresh"])
                     toplam_puan = sum(aday)
                     b_etk = "Alt" if toplam_puan <= aktif_cfg["kolon_bant_alt"][1] else (
                         "Üst" if toplam_puan >= aktif_cfg["kolon_bant_ust"][0] else "Orta")
                     adaylar.append({
                         "kolon": aday,
-                        "etiket": f"{havuz_etiketi}* [{b_etk}]",
-                        "is_gold": is_gold
+                        "etiket": f"{havuz_etiketi}* [{b_etk} | {gecen_f}/28 Q:{int(q_puan)}]",
+                        "is_gold": is_gold,
+                        "q_puan": q_puan,
+                        "gecen_filtre": gecen_f
                     })
 
     secilen_optimal = optimal_dagilim_sec(adaylar, aranan_adet, onceden_secilenler=onceden_secilen)
@@ -1403,26 +1357,25 @@ def kupon_alt_aksiyon_paneli(kolon_listesi, oyun_adi, mod_adi, bankolar=None, di
             st.success(f"✅ Kuponlar '💾 Kupon Kasası' sekmesine kaydedildi!")
     with col_b:
         with st.expander("📋 Üretilen Kuponları Kopyalanabilir Metin Olarak Gör (Bayi / Mobil İçin)"):
-            metin_satirlari = [f"=== {oyun_adi.upper()} ({mod_adi}) KUANTUM V23.5 KUPONU ==="]
+            metin_satirlari = [f"=== {oyun_adi.upper()} ({mod_adi}) KUANTUM HİBRİT KUPONU ==="]
             for idx, item in enumerate(kolon_listesi, 1):
                 k = item["kolon"]
                 eks = item.get("ekstra", {})
                 etk = item.get("etiket", f"Kolon {idx:02d}")
-                satir = f"{etk:22s} (Top:{sum(k):3d}): " + " - ".join(f"{n:02d}" for n in k)
+                satir = f"{etk:28s} (Top:{sum(k):3d}): " + " - ".join(f"{n:02d}" for n in k)
                 if "joker" in eks: satir += f" | Joker: {eks['joker']:02d} | Süper: {eks['super']:02d}"
                 if "arti" in eks: satir += f" | +1 Topu: +{eks['arti']:02d}"
                 metin_satirlari.append(satir)
             st.code("\n".join(metin_satirlari), language="text")
 
+
 # =========================================================================
-# QUANT LOTO V23.5 — PARÇA 3 / 3
-# STREAMLIT KOMUTA MERKEZİ, SON 80 ÇEKİLİŞ GIANELLA SARKAÇ PANOSU,
-# ESNEK HAVUZ/BANT/KOLON SEÇİMİ, KASA KONTROLÜ & GIANELLA BACKTEST MOTORU
+# STREAMLIT KOMUTA MERKEZİ
 # =========================================================================
-st.title("🎯 Quant Loto V23.5 — Dinamik Gianella Sarkaç & 28 Filtreli Çift Kademeli Huni")
+st.title("🎯 Quant Loto V23.5 — Akıllı Oto-Dağılım & Hibrit Kalkan")
 
 secilen_oyun = st.radio(
-    "🎯 Oynamak İstediğiniz Kuantum Evrenini Seçin (Tüm Oyunlarda Dinamik Gianella Aktif):",
+    "🎯 Oynamak İstediğiniz Kuantum Evrenini Seçin (Tüm Oyunlarda Dinamik Gianella & Hibrit Puanlama Aktif):",
     list(OYUN_EVRENLERI.keys()),
     horizontal=True
 )
@@ -1431,16 +1384,15 @@ aktif_cfg = OYUN_EVRENLERI[secilen_oyun]
 aktif_paket = evren_verisini_yukle(secilen_oyun)
 evrensel_basinc_vektoru, aktif_evrenler_listesi = mutlak_kuantum_alani_hesapla()
 
-# Sol Çekmece (Sidebar) - Kontrol Paneli
-st.sidebar.markdown("### ⚛️ V23.5 Kuantum Kontrol Paneli")
+st.sidebar.markdown("### ⚛️ Hibrit Kuantum Kontrol Paneli")
 st.sidebar.caption(
     f"Aktif Veritabanları ({len(aktif_evrenler_listesi)}/4): {', '.join([e.split()[1] for e in aktif_evrenler_listesi])}")
 pencere_boyutu = st.sidebar.slider("🔎 Gianella Analiz Penceresi (Son N Çekiliş):", 40, 150, 80, step=10,
                                    help="Varsayılan olarak son 80 çekilişi analiz ederek en yüksek sarkaç baskısına sahip Gianella havuzunu tespit eder.")
 mutlak_alan_aktif = st.sidebar.checkbox("🌌 4 Evren Ortak Dolanıklığı", value=True,
                                         help="4 oyunun birleşik kuantum alanından soğukluk sinyali alır.")
-esnek_tolerans_aktif = st.sidebar.checkbox("🔓 Esnek Huni Toleransı (27/28 Kural)", value=False,
-                                           help="Açık olduğunda 28 filtreden 1-2 esnek hata payına izin vererek dar bantlarda üretimi hızlandırır.")
+esnek_tolerans_aktif = st.sidebar.checkbox("🔓 Esnek Kalkan Toleransı (5/6 Kalkan)", value=False,
+                                           help="Açık olduğunda 6 Çelik Kalkandan 1 esnek hata payına izin vererek çok dar bantlarda üretimi rahatlatır.")
 
 if st.sidebar.button("🔄 Analizleri ve Tohumları Yenile", type="primary", use_container_width=True):
     st.cache_data.clear()
@@ -1453,7 +1405,7 @@ if aktif_paket is None:
     st.stop()
 
 # -------------------------------------------------------------------------
-# VERİTABANI EKSİK ÇEKİLİŞ KAPISI (GATEKEEPER - OTOMATİK YENİDEN HESAPLAMA)
+# VERİTABANI EKSİK ÇEKİLİŞ KAPISI
 # -------------------------------------------------------------------------
 son_kayit_bilgisi, eksik_cekilisler = eksik_cekilisleri_kontrol_et(secilen_oyun, aktif_paket)
 evren_kilidi_acik = True
@@ -1475,7 +1427,7 @@ if len(eksik_cekilisler) > 0:
             c_tarih = st.text_input("Çekiliş Tarihi (GG.AA.YYYY):",
                                     value=eksik_cekilisler[0] if '.' in eksik_cekilisler[
                                         0] else datetime.date.today().strftime("%d.%m.%Y"))
-            c_hft = st.number_input("Hafta No:", min_value=1, max_value=200, value=82)
+            c_hft = st.number_input("Hafta No:", min_value=1, max_value=300, value=84)
             c_sayilar = st.text_input(f"Çıkan Sayılar ({ornek_metin}):")
             if st.button("💾 Kaydet ve Tüm Sarkaçları Güncelle", type="primary"):
                 girilen_sayilar = [int(s) for s in re.findall(r'\d+', c_sayilar)]
@@ -1495,7 +1447,7 @@ if len(eksik_cekilisler) > 0:
             st.info("👆 Sekmeleri açmak için çekiliş girin veya kutucuğu işaretleyin.")
 else:
     st.caption(
-        f"✅ **Veritabanı Güncel!** Son Kayıt: **{son_kayit_bilgisi}** | Toplam Arşiv: **{len(aktif_paket['df']):,} Çekiliş** | 🧬 **28 Filtreli Çift Kademeli Huni & Markov Aktif**")
+        f"✅ **Veritabanı Güncel!** Son Kayıt: **{son_kayit_bilgisi}** | Toplam Arşiv: **{len(aktif_paket['df']):,} Çekiliş** | 🧬 **6 Çelik Kalkan + 22 Kuantum Büyüteç Aktif**")
 
 if not evren_kilidi_acik:
     st.stop()
@@ -1512,17 +1464,16 @@ max_sayi = aktif_cfg["max_sayi"]
 yari_havuz_boyutu = max_sayi // 2
 
 tabs = st.tabs([
-    "🚀 Dinamik Gianella Havuzları, Bant Seçimi & Kuantum Üretim",
+    "🚀 Dinamik Gianella Havuzları, Bant Seçimi & Akıllı Üretim",
     "💾 Kupon Kasası & İkramiye Kontrolü",
-    "🧪 Hızlı Backtest (Gianella & 28 Filtre vs Rastgele)",
-    "📊 Yeni Çekiliş Girişi & Hızlı Analiz"  # YENİ SEKME
+    "🧪 Hızlı Backtest (6 Kalkan + 22 Büyüteç vs Rastgele)",
+    "📊 Yeni Çekiliş Girişi & Hızlı Analiz"
 ])
 
 # =========================================================================
-# SEKME 1: GIANELLA SARKAÇ PANOSU + 3 BANT GRAFİĞİ + DİNAMİK ÜRETİM MERKEZİ
+# SEKME 1: GIANELLA SARKAÇ PANOSU + 3 BANT GRAFİĞİ + AKILLI ÜRETİM MERKEZİ
 # =========================================================================
 with tabs[0]:
-    # 1. BÖLÜM: SON 80 ÇEKİLİŞ DİNAMİK GIANELLA HAVUZ RAPORU (MADDE 1)
     h_a = gianella_rapor["havuz_a"]
     h_b = gianella_rapor["havuz_b"]
     ol_a = gianella_rapor["olasilik_a"]
@@ -1534,7 +1485,7 @@ with tabs[0]:
             🧬 SON {gianella_rapor['pencere']} ÇEKİLİŞ DİNAMİK GIANELLA SARKAÇ ANALİZİ ({yari_havuz_boyutu} + {yari_havuz_boyutu} = {max_sayi} Sayı)
         </div>
         <div style="color:#e2e8f0; font-size:13.5px; line-height:1.5;">
-            🔥 <b>Havuz A (En Yüksek Gelme Olasılıklı Gianella Havuzu - %{ol_a}):</b> Son {gianella_rapor['pencere']} çekilişte <b>{gianella_rapor['a_top_sayisi']}</b> top üretti (Beklenen: {gianella_rapor['beklenen_top']}) | Sarkaç Z-Skoru: <b>+{gianella_rapor['z_skoru']}σ</b><br>
+            🔥 <b>Havuz A (Sarkaç Baskısı Yüksek {yari_havuz_boyutu} Sayı - Olasılık: %{ol_a}):</b> Son {gianella_rapor['pencere']} çekilişte <b>{gianella_rapor['a_top_sayisi']}</b> top üretti (Beklenen: {gianella_rapor['beklenen_top']}) | Z-Skoru: <b>+{gianella_rapor['z_skoru']}σ</b><br>
             ⚖️ <b>Havuz B (Simetrik Karşılık / Doygun Havuz - %{ol_b}):</b> Son {gianella_rapor['pencere']} çekilişte <b>{gianella_rapor['b_top_sayisi']}</b> top üretti | Üst Üste Baskınlık Serisi: <b>{gianella_rapor['seri_baski']} Çekiliş</b>
         </div>
     </div>
@@ -1549,7 +1500,6 @@ with tabs[0]:
             st.markdown(f"**🪐 Havuz B (Simetrik Karşılık {len(h_b)} Sayı — Olasılık: %{ol_b}):**")
             st.code(", ".join(f"{n:02d}" for n in h_b), language="text")
 
-    # 2. BÖLÜM: CANLI 3 BANT GRAFİĞİ VE 3x3 MARKOV OLASILIK KARTLARI
     b_alt, b_ust = aktif_cfg["bant_alt"], aktif_cfg["bant_ust"]
     col_grafik, col_oranlar = st.columns([2.3, 1])
 
@@ -1602,7 +1552,6 @@ with tabs[0]:
 
     st.divider()
 
-    # 3. BÖLÜM: KULLANICI SEÇİM PANELİ (HAVUZ SEÇİMİ + BANT SEÇİMİ + KOLON SAYISI - MADDE 2 & 3)
     st.markdown("#### ⚙️ Kupon Üretim Parametrelerini Belirleyin")
     col_u1, col_u2, col_u3 = st.columns([1.6, 1.4, 1])
 
@@ -1610,9 +1559,9 @@ with tabs[0]:
         havuz_tercihi = st.selectbox(
             f"🧬 1. Oynamak İstediğiniz Gianella Havuzunu Seçin:",
             [
+                f"🎯 Akıllı Oto-Dağılım (%{ol_a} Havuz A / %{ol_b} Havuz B - En Yüksek Verim)",
                 f"🔥 Sadece Havuz A (Gelme Olasılığı En Yüksek {yari_havuz_boyutu}'lık Havuz - %{ol_a})",
                 f"⚖️ Her İki Havuz (Havuz A + Havuz B Eşit Dağılımlı Çift Matris)",
-                f"🎯 Her İki Havuz (Olasılık Ağırlıklı: %{ol_a} Havuz A / %{ol_b} Havuz B)",
                 f"🪐 Sadece Havuz B (Simetrik Karşılık {yari_havuz_boyutu}'lık Havuz - %{ol_b})"
             ]
         )
@@ -1636,14 +1585,27 @@ with tabs[0]:
         kolon_adedi = int(st.number_input(
             "🔢 3. Kaç Kolon Oynamak İstiyorsunuz?",
             min_value=1, max_value=200, value=50, step=1,
-            help="İstediğiniz kolon sayısını (Örn: 10, 25, 33, 50, 66) doğrudan yazabilirsiniz."
+            help="İstediğiniz kolon sayısını doğrudan yazabilirsiniz."
         ))
 
-    # 4. BÖLÜM: 28 FİLTRELİ ÇİFT KADEMELİ HUNİ İLE OPTİMAL KOLON ÜRETİMİ (MADDE 4)
-    if st.button(f"🚀 SEÇİLEN HAVUZ(LAR)DAN 28 FİLTRE İLE OPTİMAL {kolon_adedi} KOLON ÜRET", type="primary", use_container_width=True):
+    if st.button(f"🚀 AKILLI OTO-DAĞILIM İLE OPTİMAL {kolon_adedi} KOLON ÜRET", type="primary", use_container_width=True):
         start_t = time.time()
-        with st.spinner(f"Seçilen Gianella havuz(lar)ı 28 Filtreli Çift Kademeli Huniden geçiriliyor ve {kolon_adedi} optimal kolon örülüyor..."):
-            if "Sadece Havuz A" in havuz_tercihi:
+        with st.spinner(f"Sarkaç olasılıklarına göre bütçe porsiyonlanıyor ve hibrit motorla {kolon_adedi} kolon örülüyor..."):
+            if "Akıllı Oto-Dağılım" in havuz_tercihi:
+                adet_a = max(1, int(round(kolon_adedi * (ol_a / 100.0))))
+                adet_b = max(0, kolon_adedi - adet_a)
+                kol_a, b_a, hdg_a, ek_tohum = gianella_havuzundan_kolon_uret(
+                    h_a, adet_a, aktif_bant_kodlari, aktif_cfg, aktif_paket,
+                    mutlak_alan_aktif, esnek_tolerans_aktif, "🎯 Havuz-A (Oto)"
+                )
+                kol_b, b_b, hdg_b, _ = gianella_havuzundan_kolon_uret(
+                    h_b, adet_b, aktif_bant_kodlari, aktif_cfg, aktif_paket,
+                    mutlak_alan_aktif, esnek_tolerans_aktif, "🪐 Havuz-B (Oto)"
+                ) if adet_b > 0 else ([], [], [], {})
+                nihai_havuz = kol_a + kol_b
+                bankolar = sorted(list(set(b_a + b_b)))
+                diger_karanliklar = sorted(list(set(hdg_a + hdg_b)))
+            elif "Sadece Havuz A" in havuz_tercihi:
                 nihai_havuz, bankolar, diger_karanliklar, ek_tohum = gianella_havuzundan_kolon_uret(
                     h_a, kolon_adedi, aktif_bant_kodlari, aktif_cfg, aktif_paket,
                     mutlak_alan_aktif, esnek_tolerans_aktif, "🎯 Havuz-A"
@@ -1653,7 +1615,7 @@ with tabs[0]:
                     h_b, kolon_adedi, aktif_bant_kodlari, aktif_cfg, aktif_paket,
                     mutlak_alan_aktif, esnek_tolerans_aktif, "🪐 Havuz-B"
                 )
-            elif "Eşit Dağılımlı" in havuz_tercihi:
+            else:
                 adet_a = kolon_adedi - (kolon_adedi // 2)
                 adet_b = kolon_adedi // 2
                 kol_a, b_a, hdg_a, ek_tohum = gianella_havuzundan_kolon_uret(
@@ -1667,23 +1629,7 @@ with tabs[0]:
                 nihai_havuz = kol_a + kol_b
                 bankolar = sorted(list(set(b_a + b_b)))
                 diger_karanliklar = sorted(list(set(hdg_a + hdg_b)))
-            else:
-                # Olasılık Ağırlıklı İki Havuz Dağılımı
-                adet_a = max(1, int(round(kolon_adedi * (ol_a / 100.0))))
-                adet_b = max(0, kolon_adedi - adet_a)
-                kol_a, b_a, hdg_a, ek_tohum = gianella_havuzundan_kolon_uret(
-                    h_a, adet_a, aktif_bant_kodlari, aktif_cfg, aktif_paket,
-                    mutlak_alan_aktif, esnek_tolerans_aktif, "🎯 Havuz-A"
-                )
-                kol_b, b_b, hdg_b, _ = gianella_havuzundan_kolon_uret(
-                    h_b, adet_b, aktif_bant_kodlari, aktif_cfg, aktif_paket,
-                    mutlak_alan_aktif, esnek_tolerans_aktif, "🪐 Havuz-B"
-                ) if adet_b > 0 else ([], [], [], {})
-                nihai_havuz = kol_a + kol_b
-                bankolar = sorted(list(set(b_a + b_b)))
-                diger_karanliklar = sorted(list(set(hdg_a + hdg_b)))
 
-            # Ekstra topları (Sayısal Joker/Süper veya Şans Topu +1) sırayla dengeli dağıt
             for idx, item in enumerate(nihai_havuz):
                 item["ekstra"] = ekstra_top_hesapla(item["kolon"], aktif_cfg, ek_tohum, kolon_idx=idx)
 
@@ -1696,14 +1642,15 @@ with tabs[0]:
         havuz, bankolar, diger_karanliklar, ek_tohum, sure, secilen_mod_adi = st.session_state[f"v23_uretim_{aktif_cfg['kod']}"]
         banko_html = " ".join([f"<span class='top-banko'>{b:02d}</span>" for b in bankolar])
         kapsanan_farkli_sayi = len(set(n for item in havuz for n in item["kolon"]))
-        ek_bilgi = f" | <b>Kapsanan Farklı Sayı:</b> {kapsanan_farkli_sayi}/{max_sayi} | <b>En Aç Dekad:</b> [{ek_tohum.get('ezik_dekad', '-')}]"
+        ort_kalite = np.mean([item.get("q_puan", 75.0) for item in havuz])
+        ek_bilgi = f" | <b>Kapsanan Sayı:</b> {kapsanan_farkli_sayi}/{max_sayi} | <b>Ort. Kuantum Puanı:</b> {ort_kalite:.1f}/100 | <b>En Aç Dekad:</b> [{ek_tohum.get('ezik_dekad', '-')}]"
         if "arti_havuz" in ek_tohum:
             ek_bilgi += f" | <b style='color:#00E676;'>+1 Elit Havuz:</b> {ek_tohum['arti_havuz']}"
 
         st.markdown(f'''
         <div class="tohum-kutu">
             <div style="color:#00E5FF; font-weight:bold; font-size:14px; margin-bottom:6px;">
-                🌌 V23.5 ÇİFT KADEMELİ 28 FİLTRE & MAX-DISPERSION OPTİMAL SET ({len(havuz)} Kolon — {sure:.2f} sn)
+                🌌 AKILLI OTO-DAĞILIM HİBRİT SETİ ({len(havuz)} Kolon — {sure:.2f} sn)
             </div>
             <div style="color:white; font-size:13.5px;">
                 <b style="color:#E1BEE7;">Çekirdek Bankolar:</b> {banko_html} &nbsp;|&nbsp;
@@ -1740,7 +1687,7 @@ with tabs[1]:
                              expanded=True):
                 if kontrol_sayilari:
                     isabet_sayaci = Counter(len(set(it["kolon"]) & kontrol_sayilari) for it in kayit["kolonlar"])
-                    ozet_str = " | ".join(f"**{k} Bilen:** {v} adet" for k, v in sorted(isabet_sayaci.items(), reverse=True) if k >= 6 or k == 0)
+                    ozet_str = " | ".join(f"**{k} Bilen:** {v} adet" for k, v in sorted(isabet_sayaci.items(), reverse=True) if k >= 3 or k == 0)
                     if ozet_str:
                         st.success(f"🏆 **İkramiye Özeti:** {ozet_str}")
                 for idx, item in enumerate(kayit["kolonlar"], 1):
@@ -1756,16 +1703,16 @@ with tabs[1]:
                     st.rerun()
 
 # =========================================================================
-# SEKME 3: HIZLI BACKTEST SİMÜLASYONU (GIANELLA SARKAÇ vs RASTGELE)
+# SEKME 3: HIZLI BACKTEST SİMÜLASYONU
 # =========================================================================
 with tabs[2]:
-    st.markdown(f"### 🧪 {secilen_oyun} — Dinamik Gianella (Son 80 Çekiliş) & 28 Filtre vs Rastgele Testi")
+    st.markdown(f"### 🧪 {secilen_oyun} — Hibrit Motor vs Rastgele Backtest")
     col_bt1, col_bt2, col_bt3 = st.columns(3)
     test_hafta = col_bt1.slider("Son Kaç Çekiliş Test Edilsin?", 5, 30, 15, step=5)
     hafta_kolon = col_bt2.slider("Her Çekiliş İçin Kolon Sayısı?", 10, 66, 25, step=5)
-    bt_modu = col_bt3.selectbox("Backtest Havuz Stratejisi:", ["Sadece Baskıdaki Havuz A", "Her İki Havuz (A + B Eşit)"])
+    bt_modu = col_bt3.selectbox("Backtest Havuz Stratejisi:", ["Her İki Havuz (Olasılık Dengeli)", "Sadece Baskıdaki Havuz A"])
 
-    if st.button("🚀 GIANELLA BACKTEST SİMÜLASYONUNU BAŞLAT", type="primary"):
+    if st.button("🚀 HİBRİT BACKTEST SİMÜLASYONUNU BAŞLAT", type="primary"):
         draws = aktif_paket["draws"]
         if len(draws) <= test_hafta + 85:
             st.error("Son 80 çekilişlik dinamik Gianella penceresi için yeterli arşiv verisi yok!")
@@ -1779,7 +1726,6 @@ with tabs[2]:
                 gercek = set(draws[hedef_idx])
                 gecmis_80 = draws[hedef_idx - 80:hedef_idx]
 
-                # O çekiliş öncesindeki son 80 çekilişe göre Dinamik Gianella Havuz A'yı oluştur
                 sayac_80 = Counter(num for d in gecmis_80 for num in d if 1 <= num <= max_sayi)
                 havuz_a_bt = []
                 for d_idx in range((max_sayi - 1) // 10 + 1):
@@ -1788,19 +1734,21 @@ with tabs[2]:
                     havuz_a_bt.extend(sirali_d[:len(d_sayilar) // 2])
                 havuz_b_bt = list(set(range(1, max_sayi + 1)) - set(havuz_a_bt))
 
-                # Gerçek çekilişte Havuz A mı daha çok top yakaladı?
                 if len(set(havuz_a_bt) & gercek) >= len(set(havuz_b_bt) & gercek):
                     havuz_a_ustun_sayisi += 1
 
                 q_aday = []
                 aktif_bt_havuz = havuz_a_bt if "Sadece" in bt_modu else list(range(1, max_sayi + 1))
-                for _ in range(8000):
-                    if len(q_aday) >= hafta_kolon * 2:
+                for _ in range(6000):
+                    if len(q_aday) >= hafta_kolon * 3:
                         break
                     aday = sorted(random.sample(aktif_bt_havuz, k_boyut))
-                    if cift_kademeli_28_filtre_denetimi(aday, aktif_cfg, aktif_paket, mode="mod5",
-                                                        esnek_tolerans=True, tek_havuz_modu=True):
-                        q_aday.append({"kolon": aday})
+                    gecti_mi, q_puan, _ = hibrit_kalkan_ve_kuantum_puanla(
+                        aday, aktif_cfg, aktif_paket, mode="mod5",
+                        esnek_tolerans=True, tek_havuz_modu=("Sadece" in bt_modu)
+                    )
+                    if gecti_mi:
+                        q_aday.append({"kolon": aday, "q_puan": q_puan})
 
                 q_sec = [x["kolon"] for x in optimal_dagilim_sec(q_aday, hafta_kolon)]
                 while len(q_sec) < hafta_kolon:
@@ -1813,16 +1761,17 @@ with tabs[2]:
 
             st.success(
                 f"✅ Simülasyon Tamamlandı! Test edilen {test_hafta} çekilişin **{havuz_a_ustun_sayisi} tanesinde (%{havuz_a_ustun_sayisi / test_hafta * 100:.1f})** Dinamik Havuz A en az Havuz B kadar veya daha fazla top yakaladı!")
-            bt_t = [{"İsabet Kategorisi": f"{b} Bilen Kolon", "🎯 Quant V23.5 (Gianella + 28 Filtre)": q_isabet.get(b, 0),
+            bt_t = [{"İsabet Kategorisi": f"{b} Bilen Kolon", "🎯 Hibrit Motor (6 Kalkan + 22 Büyüteç)": q_isabet.get(b, 0),
                      "🎲 Rastgele (Sen Seç)": r_isabet.get(b, 0)} for b in [0] + list(range(2, k_boyut + 1))]
             st.dataframe(pd.DataFrame(bt_t), use_container_width=True, hide_index=True)
+
 # =========================================================================
 # SEKME 4: YENİ ÇEKİLİŞ GİRİŞİ & ANINDA ANALİZ
 # =========================================================================
 with tabs[3]:
     st.markdown(f"### 📊 {secilen_oyun} — Yeni Çekiliş Ekle & Analiz Et")
     st.info(
-        "💡 Buradan girdiğiniz çekilişler doğrudan CSV veritabanınıza kaydedilir ve tüm sistem sarkaçları anında yeni veriye göre güncellenir. Hata almamak için açık olan Excel dosyalarınızı kapatın.")
+        "💡 Buradan girdiğiniz çekilişler doğrudan CSV veritabanınıza kaydedilir ve tüm sistem sarkaçları anında yeni veriye göre güncellenir.")
 
     col_g1, col_g2 = st.columns([2, 1])
     with col_g1:
@@ -1831,31 +1780,27 @@ with tabs[3]:
         ornek_metin = "3, 14, 25, 41, 62, 78, 12, 44" if aktif_cfg["kod"] == "sayisal" else (
             "4, 12, 19, 24, 31, 8" if aktif_cfg["kod"] == "sanstopu" else f"{beklenen_sayi_adedi} adet sayı")
 
-        c_tarih = st.text_input("📅 Çekiliş Tarihi (GG.AA.YYYY):", value=datetime.date.today().strftime("%d.%m.%Y"))
-        c_hft = st.number_input("📌 Hafta No:", min_value=1, max_value=500, value=124)
-        c_sayilar = st.text_input(f"🎱 Çıkan Sayılar (Örn: {ornek_metin}):")
+        c_tarih = st.text_input("📅 Çekiliş Tarihi (GG.AA.YYYY):", value=datetime.date.today().strftime("%d.%m.%Y"), key="tab4_tarih")
+        c_hft = st.number_input("📌 Hafta No:", min_value=1, max_value=500, value=84, key="tab4_hft")
+        c_sayilar = st.text_input(f"🎱 Çıkan Sayılar (Örn: {ornek_metin}):", key="tab4_sayilar")
 
-        if st.button("💾 Veritabanına Kalıcı Olarak Kaydet ve Analiz Et", type="primary"):
+        if st.button("💾 Veritabanına Kalıcı Olarak Kaydet ve Analiz Et", type="primary", key="tab4_btn"):
             girilen_sayilar = [int(s) for s in re.findall(r'\d+', c_sayilar)]
             if len(girilen_sayilar) != beklenen_sayi_adedi:
                 st.error(f"⚠️ Lütfen tam {beklenen_sayi_adedi} adet sayı girin! (Siz {len(girilen_sayilar)} girdiniz)")
             else:
-                # Veriyi kaydetme fonksiyonunu çağır (Excel kilitlenme sorununu çözen bypass)
                 basari, mesaj = yeni_cekilis_ekle(secilen_oyun, aktif_paket, c_tarih, c_hft, girilen_sayilar)
                 if basari:
                     st.success(mesaj)
-
-                    # Anında Hızlı Analiz Göstergesi
-                    toplam_puan = sum(girilen_sayilar[:aktif_cfg["kolon_boyutu"]])
-                    b_etk = "🔵 Alt Bant" if toplam_puan <= aktif_cfg["kolon_bant_alt"][1] else (
-                        "🔴 Üst Bant" if toplam_puan >= aktif_cfg["kolon_bant_ust"][0] else "🟢 Orta Bant")
+                    toplam_puan = sum(girilen_sayilar[:aktif_cfg["arsiv_top_sayisi"]])
+                    b_etk = "🔵 Alt Bant" if toplam_puan <= aktif_cfg["bant_alt"] else (
+                        "🔴 Üst Bant" if toplam_puan >= aktif_cfg["bant_ust"] else "🟢 Orta Bant")
 
                     st.markdown("#### 🔍 Eklenen Çekilişin Hızlı Analizi")
-                    st.write(f"- **Toplam Puan (Bant):** {toplam_puan} ({b_etk})")
+                    st.write(f"- **Çekiliş Toplam Puanı (Bant):** {toplam_puan} ({b_etk})")
                     st.write(
                         f"- **Tek/Çift Dağılımı:** {sum(1 for n in girilen_sayilar if n % 2 != 0)} Tek / {sum(1 for n in girilen_sayilar if n % 2 == 0)} Çift")
                     st.write(
                         f"- **Küçük/Büyük Yarı:** {sum(1 for n in girilen_sayilar if n <= aktif_cfg['max_sayi'] // 2)} Alt Yarı / {sum(1 for n in girilen_sayilar if n > aktif_cfg['max_sayi'] // 2)} Üst Yarı")
-
                 else:
                     st.error(mesaj)
