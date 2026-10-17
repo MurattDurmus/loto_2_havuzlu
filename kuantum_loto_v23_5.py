@@ -349,6 +349,18 @@ def optimal_dagilim_sec(aday_havuzu, hedef_sayi, onceden_secilenler=None):
 # -------------------------------------------------------------------------
 # KASA YÖNETİCİSİ (.JSON & .TXT)
 # -------------------------------------------------------------------------
+def numpy_json_donusturucu(obj):
+    """NumPy veri tiplerini (int64, float32, bool_, ndarray) JSON uyumlu standart Python tiplerine çevirir."""
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.bool_):
+        return bool(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
+
 def kasayi_yukle():
     if os.path.exists(FAVORI_KASA_JSON):
         try:
@@ -357,7 +369,6 @@ def kasayi_yukle():
         except Exception:
             return []
     return []
-
 
 def kasayi_txt_olarak_senkronize_et(kasa_listesi):
     try:
@@ -382,24 +393,26 @@ def kasayi_txt_olarak_senkronize_et(kasa_listesi):
     except Exception:
         pass
 
-
 def kasaya_kupon_ekle(oyun_adi, mod_adi, kolon_listesi, banko_list, diger_karanliklar):
     kasa = kasayi_yukle()
     yeni_kayit = {
         "id": int(time.time() * 1000),
         "tarih": datetime.datetime.now().strftime("%d.%m.%Y %H:%M"),
-        "oyun": oyun_adi, "mod": mod_adi, "banko": banko_list, "hedge": diger_karanliklar, "kolonlar": kolon_listesi
+        "oyun": oyun_adi,
+        "mod": mod_adi,
+        "banko": [int(x) for x in banko_list],
+        "hedge": [int(x) for x in diger_karanliklar],
+        "kolonlar": kolon_listesi
     }
     kasa.insert(0, yeni_kayit)
     with open(FAVORI_KASA_JSON, "w", encoding="utf-8") as f:
-        json.dump(kasa, f, ensure_ascii=False, indent=2)
+        json.dump(kasa, f, ensure_ascii=False, indent=2, default=numpy_json_donusturucu)
     kasayi_txt_olarak_senkronize_et(kasa)
-
 
 def kasadan_sil(kayit_id):
     kasa = [k for k in kasayi_yukle() if k.get("id") != kayit_id]
     with open(FAVORI_KASA_JSON, "w", encoding="utf-8") as f:
-        json.dump(kasa, f, ensure_ascii=False, indent=2)
+        json.dump(kasa, f, ensure_ascii=False, indent=2, default=numpy_json_donusturucu)
     kasayi_txt_olarak_senkronize_et(kasa)
 
 
@@ -435,7 +448,11 @@ def evren_verisini_yukle(oyun_adi):
             df = df.dropna(subset=t_cols)
             for c in t_cols + ['Joker', 'Super']:
                 df[c] = df[c].fillna(0).astype(int)
-            df['Tarih_DT'] = pd.to_datetime(df['Tarih'], format='mixed', dayfirst=True, errors='coerce')
+            df['Tarih_DT'] = pd.to_datetime(df['Tarih'], format='%d.%m.%Y', errors='coerce').fillna(
+                pd.to_datetime(df['Tarih'], format='%Y-%m-%d', errors='coerce')
+            ).fillna(
+                pd.to_datetime(df['Tarih'], format='mixed', errors='coerce')
+            )
             df = df.sort_values('Tarih_DT').reset_index(drop=True)
 
         elif kod == "super":
@@ -451,7 +468,11 @@ def evren_verisini_yukle(oyun_adi):
             for c in t_cols:
                 df[c] = df[c].astype(int)
             if 'Tarih' in df.columns:
-                df['Tarih_DT'] = pd.to_datetime(df['Tarih'], format='mixed', dayfirst=True, errors='coerce')
+                df['Tarih_DT'] = pd.to_datetime(df['Tarih'], format='%d.%m.%Y', errors='coerce').fillna(
+                    pd.to_datetime(df['Tarih'], format='%Y-%m-%d', errors='coerce')
+                ).fillna(
+                    pd.to_datetime(df['Tarih'], format='mixed', errors='coerce')
+                )
                 df = df.sort_values('Tarih_DT').reset_index(drop=True)
             else:
                 df['Tarih_DT'] = pd.NaT
@@ -508,7 +529,7 @@ def evren_verisini_yukle(oyun_adi):
                 except Exception:
                     pass
             df = pd.DataFrame(clean_rows, columns=['Tarih', 'Hft'] + t_cols + ['Arti'])
-            df['Tarih_DT'] = pd.to_datetime(df['Tarih'], format='mixed', dayfirst=True, errors='coerce')
+            df['Tarih_DT'] = pd.to_datetime(df['Tarih'], format='mixed', errors='coerce')
             df = df.sort_values('Tarih_DT').reset_index(drop=True)
 
         if len(df) == 0:

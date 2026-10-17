@@ -1,0 +1,212 @@
+[
+  {
+    "id": 1792243227305,
+    "tarih": "17.10.2026 16:20",
+    "oyun": "🌌 Çılgın Sayısal Loto",
+    "mod": "🔥 Sadece Havuz A",
+    "banko": [
+      52
+    ],
+    "hedge": [
+      60,
+      33,
+      11,
+      27,
+      74,
+      61,
+      15
+    ],
+    "kolonlar": [
+      {
+        "kolon": [
+          9,
+          20,
+          29,
+          52,
+          73,
+          74
+        ],
+        "etiket": "🎯 Havuz-A [Orta | 24/28 Q:86 K:100]",
+        "is_gold": false,
+        "q_puan": 92.30000305175781,
+        "gecen_filtre": 24,
+        "kozmik_kolon_puan": 100.0,
+        "ekstra": {
+          "joker": 48,
+          "super": 33
+        }
+      },
+      {
+        "kolon": [
+          14,
+          33,
+          36,
+          58,
+          67,
+          86
+        ],
+        "etiket": "🎯 Havuz-A [Orta | 27/28 Q:92 K:66]",
+        "is_gold": false,
+        "q_puan": 80.5,
+        "gecen_filtre": 27,
+        "kozmik_kolon_puan": 66.4,
+        "ekstra": {
+          "joker": 48,
+          "super": 78
+        }
+      },
+      {
+        "kolon": [
+          7,
+          27,
+          32,
+          45,
+          70,
+          83
+        ],
+        "etiket": "🎯 Havuz-A [Orta | 28/28 Q:100 K:42]",
+        "is_gold": false,
+        "q_puan": 73.9000015258789,
+        "gecen_filtre": 28,
+        "kozmik_kolon_puan": 42.1,
+        "ekstra": {
+          "joker": 59,
+          "super": 58
+        }
+      },
+      {
+        "kolon": [
+          5,
+          12,
+          50,
+          62,
+          80,
+          81
+        ],
+        "etiket": "🎯 Havuz-A [Orta | 27/28 Q:92 K:37]",
+        "is_gold": false,
+        "q_puan": 67.19999694824219,
+        "gecen_filtre": 27,
+        "kozmik_kolon_puan": 37.0,
+        "ekstra": {
+          "joker": 84,
+          "super": 37
+        }
+      },
+      {
+        "kolon": [
+          8,
+          34,
+          43,
+          52,
+          59,
+          69
+        ],
+        "etiket": "🎯 Havuz-A [Orta | 27/28 Q:95 K:40]",
+        "is_gold": false,
+        "q_puan": 70.5,
+        "gecen_filtre": 27,
+        "kozmik_kolon_puan": 40.5,
+        "ekstra": {
+          "joker": 30,
+          "super": 3
+        }
+      },
+      {
+        "kolon": [
+          11,
+          22,
+          46,
+          50,
+          58,
+          85
+        ],
+        "etiket": "🎯 Havuz-A [Orta | 27/28 Q:95 K:43]",
+        "is_gold": false,
+        "q_puan": 71.80000305175781,
+        "gecen_filtre": 27,
+        "kozmik_kolon_puan": 43.4,
+        "ekstra": {
+          "joker": 8,
+          "super": 33
+        }
+      },
+      {
+        "kolon": [
+          6,
+          20,
+          41,
+          45,
+          78,
+          86
+        ],
+        "etiket": "🎯 Havuz-A [Orta | 26/28 Q:87 K:33]",
+        "is_gold": false,
+        "q_puan": 62.70000076293945,
+        "gecen_filtre": 26,
+        "kozmik_kolon_puan": 33.0,
+        "ekstra": {
+          "joker": 72,
+          "super": 78
+        }
+      },
+      {
+        "kolon": [
+          9,
+          26,
+          33,
+          59,
+          81,
+          90
+        ],
+        "etiket": "🎯 Havuz-A [Orta | 24/28 Q:87 K:59]",
+        "is_gold": false,
+        "q_puan": 74.4000015258789,
+        "gecen_filtre": 24,
+        "kozmik_kolon_puan": 59.0,
+        "ekstra": {
+          "joker": 30,
+          "super": 58
+        }
+      },
+      {
+        "kolon": [
+          12,
+          36,
+          45,
+          51,
+          52,
+          61
+        ],
+        "etiket": "🎯 Havuz-A [Orta | 28/28 Q:100 K:62]",
+        "is_gold": false,
+        "q_puan": 83.0,
+        "gecen_filtre": 28,
+        "kozmik_kolon_puan": 62.1,
+        "ekstra": {
+          "joker": 84,
+          "super": 37
+        }
+      },
+      {
+        "kolon": [
+          7,
+          34,
+          39,
+          50,
+          60,
+          86
+        ],
+        "etiket": "🎯 Havuz-A [Orta | 28/28 Q:100 K:33]",
+        "is_gold": false,
+        "q_puan": 69.9000015258789,
+        "gecen_filtre": 28,
+        "kozmik_kolon_puan": 33.1,
+        "ekstra": {
+          "joker": 20,
+          "super": 3
+        }
+      }
+    ]
+  }
+]

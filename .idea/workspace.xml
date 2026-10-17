@@ -2,6 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="87cafd03-0e04-4264-9b47-226dd1caad84" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Cilgin_Sayisal.csv" beforeDir="false" afterPath="$PROJECT_DIR$/Cilgin_Sayisal.csv" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/kuantum_loto_v23_5.py" beforeDir="false" afterPath="$PROJECT_DIR$/kuantum_loto_v23_5.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
